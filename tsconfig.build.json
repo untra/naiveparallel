@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src/naiveparallel",
+    "types": []
+  },
+  "include": ["src/naiveparallel"],
+  "exclude": ["src/naiveparallel/**/*.test.ts", "src/naiveparallel/**/*.test.tsx"]
+}
