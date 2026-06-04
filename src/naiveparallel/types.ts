@@ -16,6 +16,26 @@ export type Path = string;
 
 export type AxisKind = "numerical" | "ordinal";
 
+/** Identifies which date pattern a temporal axis was parsed from. */
+export type TemporalPatternId =
+  | "iso-datetime" // 2024-01-15T13:45:00(.sss)?(Z|±hh:mm)?
+  | "iso-date" // 2024-01-15
+  | "us-slash" // M/D/YYYY
+  | "ymd-slash" // YYYY/M/D
+  | "mon-d-y" // Jan 15 2024 / January 15, 2024
+  | "d-mon-y"; // 15 Jan 2024
+
+/**
+ * Present on a NumericalAxis when its values are dates. The axis' domain is
+ * epoch-milliseconds; raw string values parse via `parseTemporal(pattern, raw)`.
+ * `source` records whether the underlying column was strings (parsed) or
+ * numbers (treated as epoch-ms directly, via an override).
+ */
+export interface TemporalMarker {
+  pattern: TemporalPatternId;
+  source: "string" | "number";
+}
+
 interface AxisBase {
   /** Stable identity for this axis (the path, by default). */
   id: string;
@@ -36,6 +56,8 @@ export interface NumericalAxis extends AxisBase {
   allIntegers: boolean;
   /** True when every observed value is >= 0. */
   allPositive: boolean;
+  /** Present when this numerical axis represents dates (domain is epoch-ms). */
+  temporal?: TemporalMarker;
 }
 
 /**
@@ -90,7 +112,8 @@ export interface NaiveParallelConfig {
 
 /** Per-path overrides applied during axis inference. */
 export interface AxisOverride {
-  kind?: AxisKind;
+  /** Force a kind. `"temporal"` makes a temporal NumericalAxis (epoch-ms domain). */
+  kind?: AxisKind | "temporal";
   label?: string;
   hidden?: boolean;
   /** String value-space reducer (ordinal axes). */
