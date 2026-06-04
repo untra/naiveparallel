@@ -188,3 +188,55 @@ export const STAT_COLORS = {
   iqr: "cyan",
   min: "magenta",
 } as const;
+
+// ---------------------------------------------------------------------------
+// context
+
+/**
+ * Everything NaiveParallel derives from the data, provided via context to the
+ * compound children (ParallelControl, ParallelRow, ParallelColumn,
+ * ParallelChart) and to implementor components through useNaiveParallel().
+ * This value only changes when a filter / axis / selection commits — never
+ * mid-gesture or on hover.
+ */
+export interface NaiveParallelData<T extends DataObj = DataObj> {
+  /** The rows (input data with null/undefined entries removed). */
+  data: T[];
+  /** Convenience alias of config.axes. */
+  axes: ParallelAxis[];
+  config: NaiveParallelConfig;
+  filters: FilterState;
+  /** The rows currently passing every active filter. */
+  filteredData: T[];
+  /** The axis selected for ParallelColumn reporting (null when none). */
+  selectedAxis: ParallelAxis | null;
+  /** Live stats of the selected axis over filteredData. */
+  selectedStats: ColumnStats | null;
+  /** The axis currently driving row colorizing. */
+  colorizeAxis: ParallelAxis | null;
+  /** Resolved row colorizer. */
+  colorOf: (row: T) => string;
+
+  // ---- commit-time updaters ----
+  setFilter: (axisId: string, filter: AxisFilter | undefined) => void;
+  /** Toggles a single ordinal value on/off (starting from all-enabled). */
+  toggleOrdinalValue: (axisId: string, value: string) => void;
+  /** Unhides a known axis, or infers and appends a new one from a data path. */
+  addAxis: (path: Path) => void;
+  removeAxis: (axisId: string) => void;
+  setAxisHidden: (axisId: string, hidden: boolean) => void;
+  reorderAxes: (orderedIds: string[]) => void;
+  selectAxis: (axisId: string | null) => void;
+  setColorize: (axisId: string | null, mode: ColorizeMode) => void;
+}
+
+/**
+ * High-frequency interaction state (hover / row selection), kept in a
+ * separate context so chart-wide consumers do not re-render on hover.
+ */
+export interface NaiveParallelInteraction<T extends DataObj = DataObj> {
+  hoveredRow: T | null;
+  selectedRow: T | null;
+  setHovered: (row: T | null) => void;
+  setSelected: (row: T | null) => void;
+}
