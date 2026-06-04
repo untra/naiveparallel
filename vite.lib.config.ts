@@ -14,6 +14,8 @@ export default defineConfig({
     }),
   ],
   build: {
+    // public/ holds the demo site's CNAME — keep it out of the npm tarball.
+    copyPublicDir: false,
     lib: {
       entry: resolve(__dirname, "src/naiveparallel/index.ts"),
       name: "NaiveParallel",

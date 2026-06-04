@@ -38,6 +38,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build --config vite.lib.config.ts",
@@ -47,8 +50,7 @@
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.json --noEmit",
     "ci": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "prepublishOnly": "npm run ci",
-    "deploy": "npm run build:demo && gh-pages -d dist-demo"
+    "prepublishOnly": "npm run ci"
   },
   "peerDependencies": {
     "react": ">=18",
