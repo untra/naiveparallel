@@ -72,7 +72,9 @@ export function ParallelControl(props: ParallelControlProps) {
               >
                 {axis.label}
               </button>
-              <span className="np-control-kind">{axis.kind === "numerical" ? "#" : "abc"}</span>
+              <span className="np-control-kind">
+                {axis.kind === "numerical" ? (axis.temporal ? "cal" : "#") : "abc"}
+              </span>
               <button type="button" className="np-control-up" aria-label={`move ${axis.label} up`} onClick={() => move(axis.id, -1)}>
                 ↑
               </button>

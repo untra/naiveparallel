@@ -610,6 +610,23 @@ describe("ParallelControl", () => {
     expect(order).toEqual(["hp", "id", "type1"]);
   });
 
+  it("marks temporal axes with a distinct kind indicator", () => {
+    render(
+      <NaiveParallel
+        data={[
+          { id: 1, when: "2024-01-01" },
+          { id: 2, when: "2024-06-01" },
+        ]}
+      />
+    );
+    const whenKind = screen
+      .getByTestId("np-control-axis-when")
+      .querySelector(".np-control-kind");
+    const idKind = screen.getByTestId("np-control-axis-id").querySelector(".np-control-kind");
+    expect(whenKind?.textContent).toBe("cal");
+    expect(idKind?.textContent).toBe("#");
+  });
+
   it("locks colorizing to a chosen axis", () => {
     render(
       <NaiveParallel data={data}>
