@@ -1,4 +1,5 @@
 import type {
+  AxisKind,
   AxisOverride,
   DataObj,
   InferAxesOptions,
@@ -6,9 +7,11 @@ import type {
   OrdinalAxis,
   ParallelAxis,
   Path,
+  TemporalMarker,
 } from "../types";
 import { MAX_ORDINAL } from "../types";
 import { collectValues, discoverLeafPaths } from "./accessors";
+import { detectTemporalPattern, parseTemporal } from "./temporal";
 
 /** Default string value-space reducer: map to the first character. */
 export const firstCharMapping = (s: string): string => s.charAt(0);
@@ -70,7 +73,31 @@ export function inferAxis(input: InferAxisInput): ParallelAxis | null {
   if (values.length === 0) return null;
 
   const allNumbers = values.every((v) => typeof v === "number" && Number.isFinite(v));
-  const kind = override?.kind ?? (allNumbers ? "numerical" : "ordinal");
+  const allStrings = values.every((v) => typeof v === "string");
+
+  // Temporal resolves first: it yields a numerical axis carrying a marker.
+  // String columns auto-detect (every value must match one date pattern);
+  // numeric columns only become temporal via an explicit override (epoch-ms).
+  let temporal: TemporalMarker | undefined;
+  if (override?.kind === "temporal") {
+    if (allNumbers) temporal = { pattern: "iso-datetime", source: "number" };
+    else if (allStrings) {
+      const pattern = detectTemporalPattern(values as string[]);
+      if (pattern) temporal = { pattern, source: "string" };
+      // forced temporal but unparseable: fall through to ordinal below
+    }
+  } else if (override?.kind === undefined && allStrings && !allNumbers) {
+    const pattern = detectTemporalPattern(values as string[]);
+    if (pattern) temporal = { pattern, source: "string" };
+  }
+
+  const kind: AxisKind = temporal
+    ? "numerical"
+    : override?.kind === "temporal"
+      ? allNumbers
+        ? "numerical"
+        : "ordinal"
+      : (override?.kind ?? (allNumbers ? "numerical" : "ordinal"));
 
   const base = {
     id: path,
@@ -80,8 +107,15 @@ export function inferAxis(input: InferAxisInput): ParallelAxis | null {
   };
 
   if (kind === "numerical") {
-    if (!allNumbers) return null; // cannot force numbers out of non-number data
-    const numbers = values as number[];
+    let numbers: number[];
+    if (temporal?.source === "string") {
+      numbers = (values as string[])
+        .map((v) => parseTemporal(temporal.pattern, v))
+        .filter((n): n is number => n !== null);
+    } else {
+      if (!allNumbers) return null; // cannot force numbers out of non-number data
+      numbers = values as number[];
+    }
     let min = Infinity;
     let max = -Infinity;
     let allIntegers = true;
@@ -96,6 +130,7 @@ export function inferAxis(input: InferAxisInput): ParallelAxis | null {
       domain: override?.domain ?? [min, max],
       allIntegers,
       allPositive: min >= 0,
+      ...(temporal ? { temporal } : {}),
     };
     return axis;
   }
@@ -148,7 +183,9 @@ export function selectIdentityAxis(
   axes: ParallelAxis[],
   data: ReadonlyArray<DataObj | null | undefined>
 ): ParallelAxis | null {
-  const numericals = axes.filter((a): a is NumericalAxis => a.kind === "numerical");
+  // Temporal axes are excluded: epoch-ms values are unique integers but a
+  // timestamp column is not a row id.
+  const numericals = axes.filter((a): a is NumericalAxis => a.kind === "numerical" && !a.temporal);
   if (numericals.length === 0) return null;
 
   const named = numericals.find((a) => /^(id|index|key|#)$/i.test(a.label) || /(^|\.)(id|index|key)$/i.test(a.path));

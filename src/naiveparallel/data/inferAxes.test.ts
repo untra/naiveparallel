@@ -132,6 +132,64 @@ describe("inferAxis", () => {
   });
 });
 
+describe("inferAxis (temporal)", () => {
+  it("infers a temporal numerical axis from a consistent ISO-date column", () => {
+    const axis = inferAxis({
+      path: "date",
+      values: ["2024-01-15", "2024-03-01", "2023-12-31"],
+      maxOrdinal: 64,
+    }) as NumericalAxis;
+    expect(axis.kind).toBe("numerical");
+    expect(axis.temporal).toEqual({ pattern: "iso-date", source: "string" });
+    expect(axis.domain).toEqual([Date.UTC(2023, 11, 31), Date.UTC(2024, 2, 1)]);
+    expect(axis.allIntegers).toBe(true);
+  });
+
+  it("does NOT auto-detect numeric year columns as temporal", () => {
+    const axis = inferAxis({ path: "year", values: [1999, 2000, 2024], maxOrdinal: 64 }) as NumericalAxis;
+    expect(axis.kind).toBe("numerical");
+    expect(axis.temporal).toBeUndefined();
+  });
+
+  it("falls back to ordinal when a string date column is inconsistent", () => {
+    const axis = inferAxis({ path: "d", values: ["2024-01-15", "n/a"], maxOrdinal: 64 }) as OrdinalAxis;
+    expect(axis.kind).toBe("ordinal");
+  });
+
+  it("forces numbers to temporal (epoch-ms) via override", () => {
+    const ms = Date.UTC(2024, 0, 1);
+    const axis = inferAxis({
+      path: "t",
+      values: [ms, ms + 86_400_000],
+      override: { kind: "temporal" },
+      maxOrdinal: 64,
+    }) as NumericalAxis;
+    expect(axis.kind).toBe("numerical");
+    expect(axis.temporal).toEqual({ pattern: "iso-datetime", source: "number" });
+    expect(axis.domain).toEqual([ms, ms + 86_400_000]);
+  });
+
+  it("leaves a forced-temporal but unparseable string column ordinal", () => {
+    const axis = inferAxis({
+      path: "t",
+      values: ["alpha", "beta"],
+      override: { kind: "temporal" },
+      maxOrdinal: 64,
+    }) as OrdinalAxis;
+    expect(axis.kind).toBe("ordinal");
+  });
+
+  it("never auto-detects when the override forces another kind", () => {
+    const axis = inferAxis({
+      path: "d",
+      values: ["2024-01-15", "2024-03-01"],
+      override: { kind: "ordinal" },
+      maxOrdinal: 64,
+    }) as OrdinalAxis;
+    expect(axis.kind).toBe("ordinal");
+  });
+});
+
 describe("selectIdentityAxis", () => {
   it("prefers an axis named like an identifier", () => {
     const axes = inferAxes([
@@ -161,6 +219,16 @@ describe("selectIdentityAxis", () => {
   it("returns null for an all-ordinal dataset", () => {
     const data = [{ name: "a" }, { name: "b" }];
     expect(selectIdentityAxis(inferAxes(data), data)).toBeNull();
+  });
+
+  it("does not promote a temporal axis to position [0]", () => {
+    const data = [
+      { when: "2024-01-15", score: 1.5 },
+      { when: "2024-01-16", score: 2.5 },
+    ];
+    const axes = inferAxes(data);
+    // 'when' parses to unique integer epoch-ms but a timestamp is not a row id
+    expect(axes[0].id).toBe("score");
   });
 });
 
