@@ -1,0 +1,42 @@
+/* @untra/naiveparallel default styles — all class-based and overridable. */
+
+.np-root {
+  --np-axis-color: #444;
+  --np-axis-selected-color: #000;
+  --np-label-size: 12px;
+  --np-tick-size: 10px;
+  font-family: system-ui, sans-serif;
+}
+
+.np-chart-svg {
+  pointer-events: none;
+}
+
+.np-axis {
+  color: var(--np-axis-color);
+}
+
+.np-axis-selected {
+  color: var(--np-axis-selected-color);
+}
+
+.np-axis-line {
+  stroke-width: 1;
+}
+
+.np-axis-tick-label {
+  font-size: var(--np-tick-size);
+  fill: currentColor;
+}
+
+.np-axis-label {
+  font-size: var(--np-label-size);
+  font-weight: 600;
+  fill: currentColor;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.np-axis-selected .np-axis-label {
+  text-decoration: underline;
+}

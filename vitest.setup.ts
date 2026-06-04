@@ -23,3 +23,21 @@ HTMLCanvasElement.prototype.getContext = function getContext(this: HTMLCanvasEle
   ctx2dStub.canvas = this;
   return ctx2dStub;
 } as unknown as typeof HTMLCanvasElement.prototype.getContext;
+
+// jsdom has no ResizeObserver and measures every element at width 0; report a
+// fixed 800px so ParallelChart computes a real layout in tests.
+class ResizeObserverStub {
+  private readonly callback: ResizeObserverCallback;
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+  }
+  observe(target: Element) {
+    this.callback(
+      [{ target, contentRect: { width: 800, height: 480 } } as unknown as ResizeObserverEntry],
+      this as unknown as ResizeObserver
+    );
+  }
+  unobserve() {}
+  disconnect() {}
+}
+(globalThis as any).ResizeObserver = ResizeObserverStub;
