@@ -41,3 +41,9 @@ class ResizeObserverStub {
   disconnect() {}
 }
 (globalThis as any).ResizeObserver = ResizeObserverStub;
+
+// jsdom doesn't implement pointer capture, which the brush/drag hooks use
+Element.prototype.setPointerCapture = Element.prototype.setPointerCapture ?? (() => undefined);
+Element.prototype.releasePointerCapture =
+  Element.prototype.releasePointerCapture ?? (() => undefined);
+Element.prototype.hasPointerCapture = Element.prototype.hasPointerCapture ?? (() => false);

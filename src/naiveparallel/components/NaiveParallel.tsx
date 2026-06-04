@@ -3,6 +3,7 @@ import { NaiveParallelProvider } from "../context/NaiveParallelProvider";
 import { deriveConfig } from "../data/deriveConfig";
 import type { DataObj, InferAxesOptions, NaiveParallelConfig } from "../types";
 import { ParallelChart } from "./ParallelChart";
+import { ParallelControl } from "./ParallelControl";
 
 export interface NaiveParallelProps<T extends DataObj = DataObj> {
   /** The rows — any array of objects (null/undefined entries are skipped). */
@@ -42,7 +43,12 @@ export function NaiveParallel<T extends DataObj = DataObj>(props: NaiveParallelP
   return (
     <div className={`np-root${className ? ` ${className}` : ""}`} style={style}>
       <NaiveParallelProvider data={rows} config={config}>
-        {children ?? <ParallelChart />}
+        {children ?? (
+          <div className="np-default-ui">
+            <ParallelChart />
+            <ParallelControl />
+          </div>
+        )}
       </NaiveParallelProvider>
     </div>
   );

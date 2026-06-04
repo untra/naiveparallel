@@ -4,11 +4,44 @@ import { useNaiveParallel } from "../context/NaiveParallelContext";
 import { AxisSvg } from "./chart/AxisSvg";
 import {
   ChartLayoutContext,
+  useChartLayout,
   type ChartLayout,
   type ChartMargins,
 } from "./chart/ChartLayoutContext";
+import { HoverCanvas } from "./chart/HoverCanvas";
 import { LinesCanvas } from "./chart/LinesCanvas";
 import { buildScale, type AxisScale } from "./chart/scales";
+import { StatMarkers } from "./chart/StatMarkers";
+import { useRowHover } from "./chart/useRowHover";
+
+/** The stacked render layers; a separate component so hooks can read the layout context. */
+function ChartLayers() {
+  const layout = useChartLayout();
+  const hover = useRowHover();
+  return (
+    <div
+      className="np-chart-layers"
+      style={{ position: "absolute", inset: 0 }}
+      onPointerMove={hover.onPointerMove}
+      onPointerLeave={hover.onPointerLeave}
+      onClick={hover.onClick}
+    >
+      <LinesCanvas />
+      <HoverCanvas />
+      <svg
+        className="np-chart-svg"
+        width={layout.width}
+        height={layout.height}
+        style={{ position: "absolute", inset: 0, overflow: "visible" }}
+      >
+        {layout.visibleAxes.map((axis) => (
+          <AxisSvg key={axis.id} axis={axis} />
+        ))}
+        <StatMarkers />
+      </svg>
+    </div>
+  );
+}
 
 export interface ParallelChartProps {
   /** Chart height in px; width follows the container. */
@@ -85,17 +118,7 @@ export function ParallelChart(props: ParallelChartProps) {
     >
       {layout && (
         <ChartLayoutContext.Provider value={layout}>
-          <LinesCanvas />
-          <svg
-            className="np-chart-svg"
-            width={layout.width}
-            height={layout.height}
-            style={{ position: "absolute", inset: 0, overflow: "visible" }}
-          >
-            {layout.visibleAxes.map((axis) => (
-              <AxisSvg key={axis.id} axis={axis} />
-            ))}
-          </svg>
+          <ChartLayers />
         </ChartLayoutContext.Provider>
       )}
     </div>

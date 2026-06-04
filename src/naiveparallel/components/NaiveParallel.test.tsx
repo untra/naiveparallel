@@ -50,7 +50,7 @@ describe("NaiveParallel", () => {
     render(<NaiveParallel data={data} />);
     const hpAxis = screen.getByTestId("np-axis-hp");
     expect(hpAxis.getAttribute("class")).not.toContain("np-axis-selected");
-    fireEvent.click(screen.getByText("hp"));
+    fireEvent.click(hpAxis.querySelector(".np-axis-label")!);
     expect(screen.getByTestId("np-axis-hp").getAttribute("class")).toContain("np-axis-selected");
   });
 

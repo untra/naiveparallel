@@ -40,3 +40,96 @@
 .np-axis-selected .np-axis-label {
   text-decoration: underline;
 }
+
+.np-axis-dragging {
+  opacity: 0.75;
+}
+
+/* brushing */
+
+.np-brush {
+  fill: var(--np-brush-color, #777);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.np-brush-track {
+  cursor: crosshair;
+  pointer-events: all;
+}
+
+/* ordinal value toggling */
+
+.np-ordinal-value .np-axis-tick-label {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.np-ordinal-disabled .np-axis-tick-label {
+  opacity: 0.25;
+  text-decoration: line-through;
+}
+
+/* control */
+
+.np-control-axes {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+}
+
+.np-control-axis {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1px 0;
+}
+
+.np-control-axis button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 2px;
+}
+
+.np-control-axis-selected .np-control-name {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.np-control-kind {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.np-control-remove {
+  color: #a00;
+}
+
+/* column stats readout */
+
+.np-column-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.np-column-stats > div {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.np-column-stats dt {
+  font-weight: 600;
+}
+
+.np-column-stats dd {
+  margin: 0;
+}
+
+.np-column-count {
+  opacity: 0.7;
+  font-size: 0.9em;
+}
