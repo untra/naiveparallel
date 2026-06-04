@@ -1,5 +1,6 @@
 import React from "react";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
+import { formatDuration, formatTemporal } from "../data/temporal";
 import type { ColumnStats, ParallelAxis } from "../types";
 import { STAT_COLORS } from "../types";
 
@@ -40,6 +41,13 @@ export function ParallelColumn(props: ParallelColumnProps) {
     );
   }
 
+  // temporal axes report their stats as dates, and spreads as durations
+  const temporal = selectedAxis.kind === "numerical" ? selectedAxis.temporal : undefined;
+  const fmtValue = temporal
+    ? (n: number) => formatTemporal(n, temporal.pattern === "iso-datetime")
+    : format;
+  const fmtSpread = temporal ? formatDuration : format;
+
   return (
     <div
       className={`np-column${props.className ? ` ${props.className}` : ""}`}
@@ -52,12 +60,12 @@ export function ParallelColumn(props: ParallelColumnProps) {
       </span>
       {selectedStats?.kind === "numerical" && (
         <dl className="np-column-stats">
-          <div><dt><i style={dot(STAT_COLORS.max)} />max</dt><dd>{format(selectedStats.max)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.min)} />min</dt><dd>{format(selectedStats.min)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.median)} />median</dt><dd>{format(selectedStats.median)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.mean)} />mean</dt><dd>{format(selectedStats.mean)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.iqr)} />IQR</dt><dd>{format(selectedStats.q1)} – {format(selectedStats.q3)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.stddev)} />±1σ</dt><dd>{format(selectedStats.stddev)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.max)} />max</dt><dd>{fmtValue(selectedStats.max)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.min)} />min</dt><dd>{fmtValue(selectedStats.min)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.median)} />median</dt><dd>{fmtValue(selectedStats.median)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.mean)} />mean</dt><dd>{fmtValue(selectedStats.mean)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.iqr)} />IQR</dt><dd>{fmtValue(selectedStats.q1)} – {fmtValue(selectedStats.q3)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.stddev)} />±1σ</dt><dd>{fmtSpread(selectedStats.stddev)}</dd></div>
         </dl>
       )}
       {selectedStats?.kind === "ordinal" && (

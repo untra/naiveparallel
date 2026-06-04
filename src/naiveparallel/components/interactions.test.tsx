@@ -517,6 +517,27 @@ describe("ParallelColumn", () => {
     expect(column.textContent).toContain("78"); // median of 45/78/130
   });
 
+  it("formats temporal stats as dates, with stddev as a duration", () => {
+    render(
+      <NaiveParallel
+        data={[
+          { id: 1, when: "2024-01-01" },
+          { id: 2, when: "2024-06-01" },
+          { id: 3, when: "2024-12-01" },
+        ]}
+      >
+        <ParallelChart />
+        <ParallelColumn />
+      </NaiveParallel>
+    );
+    fireEvent.click(screen.getByText("when"));
+    const column = screen.getByTestId("np-column");
+    expect(column.textContent).toContain("2024-12-01"); // max as a date, not epoch ms
+    expect(column.textContent).toContain("2024-01-01"); // min as a date
+    expect(column.textContent).toMatch(/±1σ\s*\d+(\.\d+)?d/); // stddev as a day-duration
+    expect(column.textContent).not.toMatch(/\d{12,}/); // no raw epoch-ms anywhere
+  });
+
   it("supports a render-prop override", () => {
     render(
       <NaiveParallel data={data}>
