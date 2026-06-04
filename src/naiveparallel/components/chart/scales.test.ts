@@ -68,6 +68,57 @@ describe("buildScale (numerical)", () => {
   });
 });
 
+const temporalAxis: NumericalAxis = {
+  id: "date",
+  path: "date",
+  label: "date",
+  hidden: false,
+  kind: "numerical",
+  domain: [Date.UTC(2024, 0, 1), Date.UTC(2024, 0, 31)],
+  allIntegers: true,
+  allPositive: true,
+  temporal: { pattern: "iso-date", source: "string" },
+};
+
+describe("buildScale (temporal)", () => {
+  const scale = buildScale(temporalAxis, [40, 440]);
+
+  it("maps the latest date to the top of the range", () => {
+    expect(scale.y(Date.UTC(2024, 0, 31))).toBe(40);
+    expect(scale.y(Date.UTC(2024, 0, 1))).toBe(440);
+  });
+
+  it("inverts a pixel back to epoch-ms (a number, not a Date)", () => {
+    const v = scale.invert(40);
+    expect(typeof v).toBe("number");
+    expect(v).toBe(Date.UTC(2024, 0, 31));
+  });
+
+  it("clamps out-of-domain dates to the track ends", () => {
+    expect(scale.y(Date.UTC(2025, 0, 1))).toBe(40); // above max -> top
+    expect(scale.y(Date.UTC(2020, 0, 1))).toBe(440); // below min -> bottom
+  });
+
+  it("clamps inversion to the domain", () => {
+    expect(scale.invert(0)).toBe(Date.UTC(2024, 0, 31));
+    expect(scale.invert(9999)).toBe(Date.UTC(2024, 0, 1));
+  });
+
+  it("produces date-formatted ticks (not raw epoch ms)", () => {
+    const ticks = scale.ticks(4);
+    expect(ticks.length).toBeGreaterThan(1);
+    for (const tick of ticks) {
+      expect(tick.value).not.toMatch(/^\d{10,}$/); // not a giant ms integer
+    }
+    expect(ticks[0].y).toBeGreaterThan(ticks[ticks.length - 1].y); // earlier date sits lower
+  });
+
+  it("yields null for unmappable values", () => {
+    expect(scale.y(null)).toBeNull();
+    expect(scale.y("2024-01-15")).toBeNull(); // raw strings parse upstream in axisValue
+  });
+});
+
 describe("buildScale (ordinal)", () => {
   const scale = buildScale(ordAxis, [0, 300]);
 

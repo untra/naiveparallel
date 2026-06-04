@@ -1,4 +1,4 @@
-import { scaleLinear, scalePoint } from "d3-scale";
+import { scaleLinear, scalePoint, scaleUtc } from "d3-scale";
 import type { ParallelAxis } from "../../types";
 
 /**
@@ -22,6 +22,31 @@ export interface AxisScale {
 /** Builds the scale mapping an axis' domain onto a vertical pixel range (top, bottom). */
 export function buildScale(axis: ParallelAxis, range: [number, number]): AxisScale {
   if (axis.kind === "numerical") {
+    if (axis.temporal) {
+      // temporal: same epoch-ms positioning as linear, but a UTC time scale
+      // gives date-boundary ticks and date-formatted labels. clamp(true) is
+      // mandatory — time scales default to clamping disabled.
+      const scale = scaleUtc().domain(axis.domain).range([range[1], range[0]]).clamp(true);
+      return {
+        y(value) {
+          if (typeof value !== "number" || !Number.isFinite(value)) return null;
+          return scale(value);
+        },
+        ticks(count = 6) {
+          const format = scale.tickFormat();
+          return scale.ticks(count).map((t) => ({ value: format(t), y: scale(t) }));
+        },
+        invert(py) {
+          return scale.invert(py).getTime(); // Date -> epoch-ms number
+        },
+        invertPoint() {
+          return null;
+        },
+        step() {
+          return null;
+        },
+      };
+    }
     // high values at the top: domain [min, max] -> range [bottom, top].
     // Clamped: a configured domain may be narrower than the data extent, and
     // out-of-domain values must pin to the axis ends, not draw outside the track.
