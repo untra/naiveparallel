@@ -1,13 +1,20 @@
 # 🪒 naiveparallel
 
+[![npm](https://img.shields.io/npm/v/%40untra%2Fnaiveparallel?logo=npm&color=cb3837)](https://www.npmjs.com/package/@untra/naiveparallel)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 > Naive React parallel coordinates plot for `Array<T>` datasets.
 
-`@untra/naiveparallel` is a compound React component for rendering highly-interactive
+[`@untra/naiveparallel`](https://www.npmjs.com/package/@untra/naiveparallel) is a compound React component for rendering highly-interactive
 [parallel coordinates plots](https://en.wikipedia.org/wiki/Parallel_coordinates) from
 arbitrary arrays of objects — the same input shape
 [`@untra/naivetable`](https://github.com/untra/naivetable) accepts. Where naivetable
 renders the raw data row by row, naiveparallel renders the parallel coordinates plot
 (and more).
+
+```sh
+npm install @untra/naiveparallel
+```
 
 ```tsx
 import { NaiveParallel } from "@untra/naiveparallel";
@@ -38,8 +45,8 @@ import "@untra/naiveparallel/styles.css";
 - **`ParallelControl`** adds / hides / removes / reorders axes and manages row
   colorizing (follow the selected axis, or lock to a chosen one).
 - **`ParallelColumn`** reports live statistics for the selected axis over the filtered
-  data — numerical: max <span style="color:red">red</span>, mean green, median blue,
-  ±1σ band yellow, IQR cyan, min magenta; ordinal: mode, median, dispersion (entropy).
+  data — numerical: max red / min blue (half thickness), median green, mean cyan,
+  IQR bracket yellow, median±1σ magenta dotted; ordinal: mode, median, dispersion (entropy).
 - **`ParallelRow`** is a pure render-prop exposing `hoveredRow` / `selectedRow` / filteredData` for free-form styling.
 
 ## Development
