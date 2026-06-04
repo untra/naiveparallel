@@ -214,6 +214,22 @@ export function Tests() {
           }}
         />
       </Scenario>
+
+      <Scenario
+        n={14}
+        title="Temporal (date) axis"
+        note="A string column of ISO dates auto-detects as a temporal axis: it brushes, filters, and reports stats exactly like a numerical axis, but renders date ticks and date-formatted stats (the control marks it 'cal'). M/D/YYYY and month-name columns auto-detect too; numeric epoch columns never do — force those with inferOptions overrides { kind: 'temporal' }."
+      >
+        <NaiveParallel
+          data={[
+            { id: 1, released: "2024-01-15", price: 19.99 },
+            { id: 2, released: "2024-03-02", price: 24.5 },
+            { id: 3, released: "2024-06-21", price: 12.0 },
+            { id: 4, released: "2024-09-10", price: 30.0 },
+            { id: 5, released: "2024-12-25", price: 8.75 },
+          ]}
+        />
+      </Scenario>
     </main>
   );
 }
