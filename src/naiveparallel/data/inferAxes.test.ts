@@ -25,6 +25,26 @@ describe("inferAxis", () => {
     expect(axis.allPositive).toBe(true);
   });
 
+  it("honors an explicit domain override wider than the data extent", () => {
+    const axis = inferAxis({
+      path: "hp",
+      values: [45, 78, 130],
+      override: { domain: [0, 255] }, // the preferred bottom/top, not the data min/max
+      maxOrdinal: 64,
+    }) as NumericalAxis;
+    expect(axis.domain).toEqual([0, 255]);
+  });
+
+  it("honors an explicit domain override narrower than the data extent", () => {
+    const axis = inferAxis({
+      path: "hp",
+      values: [45, 78, 130],
+      override: { domain: [50, 100] },
+      maxOrdinal: 64,
+    }) as NumericalAxis;
+    expect(axis.domain).toEqual([50, 100]);
+  });
+
   it("infers an ordinal axis from strings, ordered low to high", () => {
     const axis = inferAxis({
       path: "type",

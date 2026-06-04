@@ -119,7 +119,7 @@ export function Tests() {
       <Scenario
         n={8}
         title="Brushing and live statistics"
-        note="Select an axis by clicking its name, then drag along any numerical axis to brush a range. The six color-coded stats — red max, green mean, blue median, yellow ±1σ band, cyan IQR bracket, magenta min — recompute over the filtered rows as you brush. Click a brushed axis to clear it."
+        note="Drag along any numerical axis to brush a range — the rows and stats update live while you drag, and the brushed axis becomes the active (selected) one. Grab the brushed range itself to slide it along the axis, size preserved. Several axes can be brushed at once; clicking an empty part of a brushed track clears that axis. Markers: red max and blue min (half thickness), green median, cyan mean, yellow IQR bracket, magenta dotted ±1σ around the median."
       >
         <NaiveParallel data={sample}>
           <ParallelColumn />
@@ -192,6 +192,26 @@ export function Tests() {
             overrides: {
               type1: { colors: typeColors as Record<string, string> },
               type2: { colors: typeColors as Record<string, string> },
+            },
+          }}
+        />
+      </Scenario>
+
+      <Scenario
+        n={13}
+        title="Explicit axis ranges"
+        note="The six stat axes share a fixed [0, 255] domain via configuration overrides — the conventional Pokémon stat ceiling — instead of fitting each axis to its own data extent, so their shapes are directly comparable. Values beyond a configured range clamp to the axis ends."
+      >
+        <NaiveParallel
+          data={sample}
+          inferOptions={{
+            overrides: {
+              "stats.hp": { domain: [0, 255] },
+              "stats.attack": { domain: [0, 255] },
+              "stats.defense": { domain: [0, 255] },
+              "stats.spAttack": { domain: [0, 255] },
+              "stats.spDefense": { domain: [0, 255] },
+              "stats.speed": { domain: [0, 255] },
             },
           }}
         />

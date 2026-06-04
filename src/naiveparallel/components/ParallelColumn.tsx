@@ -53,17 +53,17 @@ export function ParallelColumn(props: ParallelColumnProps) {
       {selectedStats?.kind === "numerical" && (
         <dl className="np-column-stats">
           <div><dt><i style={dot(STAT_COLORS.max)} />max</dt><dd>{format(selectedStats.max)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.mean)} />mean</dt><dd>{format(selectedStats.mean)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.median)} />median</dt><dd>{format(selectedStats.median)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.stddev)} />±1σ</dt><dd>{format(selectedStats.stddev)}</dd></div>
-          <div><dt><i style={dot(STAT_COLORS.iqr)} />IQR</dt><dd>{format(selectedStats.q1)} – {format(selectedStats.q3)}</dd></div>
           <div><dt><i style={dot(STAT_COLORS.min)} />min</dt><dd>{format(selectedStats.min)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.median)} />median</dt><dd>{format(selectedStats.median)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.mean)} />mean</dt><dd>{format(selectedStats.mean)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.iqr)} />IQR</dt><dd>{format(selectedStats.q1)} – {format(selectedStats.q3)}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.stddev)} />±1σ</dt><dd>{format(selectedStats.stddev)}</dd></div>
         </dl>
       )}
       {selectedStats?.kind === "ordinal" && (
         <dl className="np-column-stats">
-          <div><dt>mode</dt><dd>{selectedStats.mode}</dd></div>
-          <div><dt>median</dt><dd>{selectedStats.median ?? "—"}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.mode)} />mode</dt><dd>{selectedStats.mode}</dd></div>
+          <div><dt><i style={dot(STAT_COLORS.median)} />median</dt><dd>{selectedStats.median ?? "—"}</dd></div>
           <div><dt>dispersion</dt><dd>{selectedStats.dispersion.toFixed(3)}</dd></div>
         </dl>
       )}

@@ -20,8 +20,10 @@ export interface AxisScale {
 /** Builds the scale mapping an axis' domain onto a vertical pixel range (top, bottom). */
 export function buildScale(axis: ParallelAxis, range: [number, number]): AxisScale {
   if (axis.kind === "numerical") {
-    // high values at the top: domain [min, max] -> range [bottom, top]
-    const scale = scaleLinear().domain(axis.domain).range([range[1], range[0]]);
+    // high values at the top: domain [min, max] -> range [bottom, top].
+    // Clamped: a configured domain may be narrower than the data extent, and
+    // out-of-domain values must pin to the axis ends, not draw outside the track.
+    const scale = scaleLinear().domain(axis.domain).range([range[1], range[0]]).clamp(true);
     return {
       y(value) {
         if (typeof value !== "number" || !Number.isFinite(value)) return null;

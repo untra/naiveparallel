@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
-import type { NumericFilter } from "../types";
+import type { NumericFilter, OrdinalFilter } from "../types";
 import { NaiveParallel } from "./NaiveParallel";
 import { ParallelChart } from "./ParallelChart";
 import { ParallelColumn } from "./ParallelColumn";
@@ -15,14 +15,29 @@ const data = [
 ];
 
 function FilterProbe() {
-  const { filters, filteredData } = useNaiveParallel();
+  const { filters, filteredData, config } = useNaiveParallel();
   const hp = filters.hp as NumericFilter | undefined;
+  const id = filters.id as NumericFilter | undefined;
+  const type1 = filters.type1 as OrdinalFilter | undefined;
   return (
     <div>
       <span data-testid="probe-count">{filteredData.length}</span>
       <span data-testid="probe-hp">{hp ? `${hp.min.toFixed(0)}-${hp.max.toFixed(0)}` : "none"}</span>
+      <span data-testid="probe-hp-span">{hp ? (hp.max - hp.min).toFixed(2) : "none"}</span>
+      <span data-testid="probe-id">{id ? `${id.min.toFixed(0)}-${id.max.toFixed(0)}` : "none"}</span>
+      <span data-testid="probe-type1">
+        {type1 ? [...type1.enabled].sort().join(",") : "none"}
+      </span>
+      <span data-testid="probe-selected">{config.selectedAxisId ?? "none"}</span>
     </div>
   );
+}
+
+/** Flush the rAF-throttled live-brush dispatch. */
+async function nextFrame() {
+  await act(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+  });
 }
 
 describe("brushing a numerical axis", () => {
@@ -61,7 +76,7 @@ describe("brushing a numerical axis", () => {
     fireEvent.pointerUp(track, { clientY: 200, pointerId: 1 });
   });
 
-  it("clears the filter on a click (no drag)", () => {
+  it("clears the filter on a click on the empty track (outside the range)", () => {
     const { container } = render(
       <NaiveParallel data={data}>
         <ParallelChart />
@@ -74,10 +89,139 @@ describe("brushing a numerical axis", () => {
     fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
     expect(screen.getByTestId("probe-count").textContent).toBe("2");
 
-    fireEvent.pointerDown(track, { clientY: 300, pointerId: 1 });
-    fireEvent.pointerUp(track, { clientY: 301, pointerId: 1 });
+    fireEvent.pointerDown(track, { clientY: 100, pointerId: 1 }); // above the 200..464 range
+    fireEvent.pointerUp(track, { clientY: 101, pointerId: 1 });
     expect(screen.getByTestId("probe-hp").textContent).toBe("none");
     expect(screen.getByTestId("probe-count").textContent).toBe("3");
+  });
+
+  it("selects the brushed axis (last brushed is active)", () => {
+    const { container } = render(
+      <NaiveParallel data={data}>
+        <ParallelChart />
+        <FilterProbe />
+      </NaiveParallel>
+    );
+    expect(screen.getByTestId("probe-selected").textContent).toBe("id");
+    const track = container.querySelector('[data-testid="np-axis-hp"] .np-brush-track')!;
+    fireEvent.pointerDown(track, { clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-selected").textContent).toBe("hp");
+  });
+
+  it("applies the filter live while brushing, before pointer-up", async () => {
+    const { container } = render(
+      <NaiveParallel data={data}>
+        <ParallelChart />
+        <FilterProbe />
+      </NaiveParallel>
+    );
+    const track = container.querySelector('[data-testid="np-axis-hp"] .np-brush-track')!;
+    fireEvent.pointerDown(track, { clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    await nextFrame(); // pointer still down — the rows already updated
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-98");
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+  });
+});
+
+describe("brush move (grab and slide the filtered range)", () => {
+  function brushed() {
+    const rendered = render(
+      <NaiveParallel data={data}>
+        <ParallelChart />
+        <FilterProbe />
+      </NaiveParallel>
+    );
+    const track = rendered.container.querySelector(
+      '[data-testid="np-axis-hp"] .np-brush-track'
+    )!;
+    // commit a 200..464px brush -> hp [45, ~98.4]
+    fireEvent.pointerDown(track, { clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    return track;
+  }
+
+  it("slides the range along the axis, preserving its size", () => {
+    const track = brushed();
+    const spanBefore = screen.getByTestId("probe-hp-span").textContent;
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-98");
+
+    // grab inside the 200..464 extent and drag up 50px
+    fireEvent.pointerDown(track, { clientY: 300, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 250, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 250, pointerId: 1 });
+
+    // extent slid to 150..414 -> hp [~55.1, ~108.6]; span unchanged
+    expect(screen.getByTestId("probe-hp").textContent).toBe("55-109");
+    expect(screen.getByTestId("probe-hp-span").textContent).toBe(spanBefore);
+  });
+
+  it("shows the sliding rect with constant height while moving", () => {
+    const track = brushed();
+    fireEvent.pointerDown(track, { clientY: 300, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 250, pointerId: 1 });
+    const rect = screen.getByTestId("np-brush-hp");
+    expect(Number(rect.getAttribute("y"))).toBeCloseTo(150, 6);
+    expect(Number(rect.getAttribute("height"))).toBeCloseTo(264, 6); // 464-200, preserved
+    fireEvent.pointerUp(track, { clientY: 250, pointerId: 1 });
+  });
+
+  it("clamps the slide to the track ends", () => {
+    const track = brushed();
+    fireEvent.pointerDown(track, { clientY: 300, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 }); // shove far down
+    const rect = screen.getByTestId("np-brush-hp");
+    expect(Number(rect.getAttribute("y")) + Number(rect.getAttribute("height"))).toBe(464);
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-98"); // pinned at the bottom
+  });
+
+  it("leaves the filter intact when the range is clicked without moving", () => {
+    const track = brushed();
+    fireEvent.pointerDown(track, { clientY: 300, pointerId: 1 }); // inside the range
+    fireEvent.pointerUp(track, { clientY: 300, pointerId: 1 });
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-98");
+  });
+});
+
+describe("multiple axes filtered at once", () => {
+  it("accumulates filters across axes; the last brushed axis is the active one", async () => {
+    const { container } = render(
+      <NaiveParallel data={data}>
+        <ParallelChart />
+        <FilterProbe />
+      </NaiveParallel>
+    );
+    // brush hp to [45, ~98] -> rows 1 (Grass) and 2 (Fire)
+    const hpTrack = container.querySelector('[data-testid="np-axis-hp"] .np-brush-track')!;
+    fireEvent.pointerDown(hpTrack, { clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(hpTrack, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(hpTrack, { clientY: 464, pointerId: 1 });
+
+    // toggle Fire off on type1 -> only row 1 (Grass) passes both filters
+    fireEvent.click(screen.getByText("Fire"));
+
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-98");
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Grass,Water");
+    expect(screen.getByTestId("probe-count").textContent).toBe("1");
+
+    // brush a second numerical axis (id) -> three simultaneous filters
+    const idTrack = container.querySelector('[data-testid="np-axis-id"] .np-brush-track')!;
+    fireEvent.pointerDown(idTrack, { clientY: 44, pointerId: 1 });
+    fireEvent.pointerMove(idTrack, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(idTrack, { clientY: 464, pointerId: 1 });
+
+    expect(screen.getByTestId("probe-id").textContent).toBe("1-3");
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-98");
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Grass,Water");
+    expect(screen.getByTestId("probe-count").textContent).toBe("1");
+    // id was brushed last, so it is the active/selected axis
+    expect(screen.getByTestId("probe-selected").textContent).toBe("id");
   });
 });
 
@@ -112,24 +256,50 @@ describe("axis drag reorder", () => {
 });
 
 describe("StatMarkers", () => {
-  it("renders the six color-coded numerical markers for the selected axis", () => {
-    const { container } = render(<NaiveParallel data={data} />);
+  it("renders the color-coded numerical markers for the selected axis", () => {
+    render(<NaiveParallel data={data} />);
     fireEvent.click(screen.getByTestId("np-axis-hp").querySelector(".np-axis-label")!);
     const stats = screen.getByTestId("np-stats");
+    // red max and blue min at half thickness
     expect(stats.querySelector(".np-stat-max")).toHaveAttribute("stroke", "red");
-    expect(stats.querySelector(".np-stat-mean")).toHaveAttribute("stroke", "green");
-    expect(stats.querySelector(".np-stat-median")).toHaveAttribute("stroke", "blue");
-    expect(stats.querySelector(".np-stat-stddev")).toHaveAttribute("fill", "yellow");
-    expect(stats.querySelector(".np-stat-iqr")).toHaveAttribute("stroke", "cyan");
-    expect(stats.querySelector(".np-stat-min")).toHaveAttribute("stroke", "magenta");
-    expect(container).toBeTruthy();
+    expect(stats.querySelector(".np-stat-max")).toHaveAttribute("stroke-width", "1");
+    expect(stats.querySelector(".np-stat-min")).toHaveAttribute("stroke", "blue");
+    expect(stats.querySelector(".np-stat-min")).toHaveAttribute("stroke-width", "1");
+    // green median, cyan mean at full thickness
+    expect(stats.querySelector(".np-stat-median")).toHaveAttribute("stroke", "green");
+    expect(stats.querySelector(".np-stat-median")).toHaveAttribute("stroke-width", "2");
+    expect(stats.querySelector(".np-stat-mean")).toHaveAttribute("stroke", "cyan");
+    // yellow IQR bracket
+    expect(stats.querySelector(".np-stat-iqr")).toHaveAttribute("stroke", "yellow");
+    // magenta dotted ±1σ lines
+    const stddev = stats.querySelector(".np-stat-stddev")!;
+    expect(stddev).toHaveAttribute("stroke", "magenta");
+    expect(stddev).toHaveAttribute("stroke-dasharray", "3 3");
+    expect(stddev.querySelectorAll("line")).toHaveLength(2);
   });
 
-  it("renders mode/median/dispersion for an ordinal selection", () => {
+  it("anchors the ±1σ dotted lines on the median", () => {
+    render(<NaiveParallel data={data} />);
+    fireEvent.click(screen.getByTestId("np-axis-hp").querySelector(".np-axis-label")!);
+    const stats = screen.getByTestId("np-stats");
+    // hp values 45/78/130: median 78, sample stddev ~42.95
+    // scale: domain [45,130] -> range [464,44] (clamped)
+    const yOf = (v: number) => 464 + ((v - 45) / (130 - 45)) * (44 - 464);
+    const median = 78;
+    const sigma = Math.sqrt(((45 - 84.33) ** 2 + (78 - 84.33) ** 2 + (130 - 84.33) ** 2) / 2);
+    const [hi, lo] = Array.from(
+      stats.querySelectorAll<SVGLineElement>(".np-stat-stddev line")
+    ).map((l) => Number(l.getAttribute("y1")));
+    expect(hi).toBeCloseTo(yOf(Math.min(median + sigma, 130)), 1);
+    expect(lo).toBeCloseTo(yOf(Math.max(median - sigma, 45)), 1);
+  });
+
+  it("renders a cyan mode and green median for an ordinal selection", () => {
     render(<NaiveParallel data={data} />);
     fireEvent.click(screen.getByTestId("np-axis-type1").querySelector(".np-axis-label")!);
     const stats = screen.getByTestId("np-stats");
-    expect(stats.querySelector(".np-stat-mode")).not.toBeNull();
+    expect(stats.querySelector(".np-stat-mode")).toHaveAttribute("stroke", "cyan");
+    expect(stats.querySelector(".np-stat-median")).toHaveAttribute("stroke", "green");
     expect(stats.querySelector(".np-stat-dispersion")?.textContent).toMatch(/^H /);
   });
 });

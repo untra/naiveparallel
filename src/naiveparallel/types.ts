@@ -144,19 +144,19 @@ export type FilterState = Record<string, AxisFilter | undefined>;
  */
 export interface NumericalStats {
   kind: "numerical";
-  /** Red — maximum / upper filter bound of the active data. */
+  /** Red (half thickness) — maximum / upper filter bound of the active data. */
   max: number;
-  /** Green — arithmetic mean. */
+  /** Cyan — arithmetic mean. */
   mean: number;
-  /** Blue — median. */
+  /** Green — median. */
   median: number;
-  /** Yellow — standard deviation; renders as a band from mean-σ to mean+σ. */
+  /** Magenta — standard deviation; renders as dotted lines at median−σ and median+σ. */
   stddev: number;
-  /** Cyan — 25th percentile (IQR bracket low). */
+  /** Yellow — 25th percentile (IQR bracket low). */
   q1: number;
-  /** Cyan — 75th percentile (IQR bracket high). */
+  /** Yellow — 75th percentile (IQR bracket high). */
   q3: number;
-  /** Magenta — minimum / lower filter bound of the active data. */
+  /** Blue (half thickness) — minimum / lower filter bound of the active data. */
   min: number;
   /** Rows contributing to these stats. */
   count: number;
@@ -179,14 +179,19 @@ export interface OrdinalStats {
 
 export type ColumnStats = NumericalStats | OrdinalStats;
 
-/** The conventional colors the chart uses for the six numerical stats. */
+/**
+ * The conventional colors the chart uses for the stat markers.
+ * max/min draw at half thickness; stddev draws as dotted lines at
+ * median−σ and median+σ; mean (numerical) and mode (ordinal) share cyan.
+ */
 export const STAT_COLORS = {
   max: "red",
-  mean: "green",
-  median: "blue",
-  stddev: "yellow",
-  iqr: "cyan",
-  min: "magenta",
+  min: "blue",
+  median: "green",
+  mean: "cyan",
+  mode: "cyan",
+  iqr: "yellow",
+  stddev: "magenta",
 } as const;
 
 // ---------------------------------------------------------------------------

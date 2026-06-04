@@ -46,6 +46,17 @@ describe("buildScale (numerical)", () => {
     expect(scale.invert(40)).toBe(100);
   });
 
+  it("clamps out-of-domain values to the axis ends", () => {
+    // an explicit configured domain may be narrower than the data extent
+    expect(scale.y(250)).toBe(40); // above domain max -> top of track
+    expect(scale.y(-50)).toBe(440); // below domain min -> bottom of track
+  });
+
+  it("clamps inversion to the domain", () => {
+    expect(scale.invert(0)).toBe(100);
+    expect(scale.invert(9999)).toBe(0);
+  });
+
   it("produces numeric ticks", () => {
     const ticks = scale.ticks(5);
     expect(ticks.length).toBeGreaterThan(2);

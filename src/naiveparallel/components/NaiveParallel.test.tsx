@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
+import { deriveConfig } from "../data/deriveConfig";
+import type { DataObj } from "../types";
 import { NaiveParallel } from "./NaiveParallel";
 import { ParallelChart } from "./ParallelChart";
 
@@ -52,6 +54,38 @@ describe("NaiveParallel", () => {
     expect(hpAxis.getAttribute("class")).not.toContain("np-axis-selected");
     fireEvent.click(hpAxis.querySelector(".np-axis-label")!);
     expect(screen.getByTestId("np-axis-hp").getAttribute("class")).toContain("np-axis-selected");
+  });
+
+  it("honors an explicit axis domain from inferOptions overrides", () => {
+    render(
+      <NaiveParallel
+        data={data}
+        inferOptions={{ overrides: { hp: { domain: [0, 255] } } }}
+      >
+        <ParallelChart />
+      </NaiveParallel>
+    );
+    // ticks come from the configured [0, 255] domain, not the 45..130 data extent
+    const hpAxis = screen.getByTestId("np-axis-hp");
+    expect(hpAxis.textContent).toContain("250");
+    expect(hpAxis.textContent).toContain("0");
+  });
+
+  it("honors an explicit axis domain from a full configuration", () => {
+    const config = deriveConfig(data.filter((d) => d != null) as DataObj[]);
+    const axes = config.axes.map((axis) =>
+      axis.id === "hp" && axis.kind === "numerical"
+        ? { ...axis, domain: [40, 90] as [number, number] }
+        : axis
+    );
+    render(
+      <NaiveParallel data={data} configuration={{ ...config, axes }}>
+        <ParallelChart />
+      </NaiveParallel>
+    );
+    const hpAxis = screen.getByTestId("np-axis-hp");
+    expect(hpAxis.textContent).toContain("90");
+    expect(hpAxis.textContent).not.toContain("130"); // data max beyond the configured top
   });
 
   it("does not render hidden or unrenderable axes", () => {

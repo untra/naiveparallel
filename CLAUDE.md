@@ -35,14 +35,15 @@ Strictly layered; respect the dependency direction:
 ### Chart rendering contract (`components/chart/`)
 
 - Row polylines draw to **canvas** (`LinesCanvas`, dpr-scaled); axes/brushes/stat-markers are React-rendered **SVG**. Both layers position exclusively through `buildScale()` + `ChartLayoutContext` — this shared scale is the only thing keeping canvas and SVG pixel-aligned. Never compute chart positions any other way.
-- **Gesture model**: in-flight brush/drag state is local to the hook (`useBrush`, `useAxisDrag`); the filter/reorder commits to the reducer **on pointer-up only**. Canvas layers redraw via `useEffect` on commit. `HoverCanvas` is a second canvas drawing just the hovered/pinned rows so hover stays off the main canvas.
+- **Gesture model**: brushing applies the range filter **live** — `useBrush` dispatches rAF-throttled `SET_FILTER` actions during the drag (one per frame, port of the reference chart's `scheduleUpdate`), so rows/stats/markers update mid-gesture; pointer-up dispatches the final exact extent. Brushing an axis also selects it (last-brushed = active). Grabbing an existing brushed range slides it along the axis with its size preserved (move mode); a click on empty track clears the filter, a click on the range leaves it. Axis drag-reorder (`useAxisDrag`) still commits on pointer-up only. `HoverCanvas` is a second canvas drawing just the hovered/pinned rows so hover stays off the main canvas.
 - **Pointer-target geometry**: the axis *label* is click-to-select and drag-to-reorder; the axis *track* below is the brush target (numerical) or per-value toggles (ordinal). These regions must never overlap — that's what prevents brush/drag conflicts.
 
 ### Domain rules baked into the pipeline
 
 - Numbers → numerical axes; strings/booleans → ordinal. An ordinal with > `MAX_ORDINAL` (64) distinct values gets the first-char mapping `s => s[0]`; still > 64 (or URL-like values) → `renderable: false` and hidden (still listed in the control, disabled).
 - After inference, an "identity" numerical axis is moved to `axes[0]` (named like id/index/key, else a unique all-integer column, else first numerical) and drives default row colorizing. Colorize either *follows* the selected axis or is *locked* to one.
-- Stat marker colors are fixed by spec (`STAT_COLORS`): red max, green mean, blue median, yellow ±1σ band, cyan IQR bracket, magenta min; ordinal stats are mode / median / dispersion (normalized entropy).
+- Stat marker colors are fixed by spec (`STAT_COLORS`): red max and blue min at **half thickness**, green median, cyan mean (numerical) / cyan mode (ordinal), yellow IQR bracket, magenta **dotted** lines at median±1σ (anchored on the median, not the mean); ordinal stats are mode / median / dispersion (normalized entropy).
+- Numerical scales are **clamped** (`buildScale`): a configured `domain` may be narrower than the data extent (explicit axis ranges via `AxisOverride.domain` or a full `configuration`), and out-of-domain values pin to the track ends.
 - Input data may contain `null` entries (mons.json literally starts with one) — everything filters them.
 
 ## Quirks worth knowing
