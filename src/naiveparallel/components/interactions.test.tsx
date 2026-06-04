@@ -129,6 +129,50 @@ describe("brushing a numerical axis", () => {
   });
 });
 
+describe("brushing a temporal axis", () => {
+  // 'when' auto-detects as a temporal numerical axis (iso-date), so it brushes
+  // through the same numeric path: domain [Jan 1, Dec 1] epoch-ms over track 44..464.
+  const datedData = [
+    { id: 1, when: "2024-01-01" },
+    { id: 2, when: "2024-06-01" },
+    { id: 3, when: "2024-12-01" },
+  ];
+
+  function TemporalProbe() {
+    const { filters, filteredData } = useNaiveParallel();
+    const when = filters.when as NumericFilter | undefined;
+    return (
+      <div>
+        <span data-testid="probe-when-count">{filteredData.length}</span>
+        <span data-testid="probe-when-kind">{when?.kind ?? "none"}</span>
+        <span data-testid="probe-when-min">{when ? String(when.min) : "none"}</span>
+        <span data-testid="probe-when-max">{when ? String(when.max) : "none"}</span>
+      </div>
+    );
+  }
+
+  it("commits a numeric epoch-ms filter on pointer-up", () => {
+    const { container } = render(
+      <NaiveParallel data={datedData}>
+        <ParallelChart />
+        <TemporalProbe />
+      </NaiveParallel>
+    );
+    const track = container.querySelector('[data-testid="np-axis-when"] .np-brush-track')!;
+    fireEvent.pointerDown(track, { clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+
+    // invert(464) = domain min (clamped); invert(200) ~ late July — keeps Jan + Jun, drops Dec
+    expect(screen.getByTestId("probe-when-kind").textContent).toBe("numeric");
+    expect(Number(screen.getByTestId("probe-when-min").textContent)).toBe(Date.UTC(2024, 0, 1));
+    const max = Number(screen.getByTestId("probe-when-max").textContent);
+    expect(max).toBeGreaterThan(Date.UTC(2024, 5, 1));
+    expect(max).toBeLessThan(Date.UTC(2024, 11, 1));
+    expect(screen.getByTestId("probe-when-count").textContent).toBe("2");
+  });
+});
+
 describe("brush move (grab and slide the filtered range)", () => {
   function brushed() {
     const rendered = render(
