@@ -228,7 +228,11 @@ export function Tests() {
             { id: 4, released: "2024-09-10", price: 30.0 },
             { id: 5, released: "2024-12-25", price: 8.75 },
           ]}
-        />
+        >
+          <ParallelChart />
+          <ParallelColumn />
+          <ParallelControl />
+        </NaiveParallel>
       </Scenario>
     </main>
   );
