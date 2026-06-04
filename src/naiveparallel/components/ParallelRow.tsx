@@ -19,9 +19,7 @@ export interface ParallelRowContext<T extends DataObj = DataObj> {
 
 export interface ParallelRowProps<T extends DataObj = DataObj> {
   /**
-   * Pure render-prop — naiveparallel's analogue of naiveasync's
-   * `(state, call) => JSX`: the implementor styles the contextual fields
-   * however they want. Renders nothing without children.
+   * Pure render-prop
    */
   children?: (context: ParallelRowContext<T>) => React.ReactNode;
 }

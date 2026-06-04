@@ -14,7 +14,6 @@ export interface ParallelState {
 export type ParallelAction =
   | { type: "RESET"; config: NaiveParallelConfig }
   | { type: "SET_FILTER"; axisId: string; filter: AxisFilter | undefined }
-  | { type: "TOGGLE_ORDINAL"; axisId: string; value: string }
   | { type: "ADD_AXIS"; axis: ParallelAxis }
   | { type: "REMOVE_AXIS"; axisId: string }
   | { type: "SET_HIDDEN"; axisId: string; hidden: boolean }
@@ -44,23 +43,14 @@ export function parallelReducer(state: ParallelState, action: ParallelAction): P
 
     case "SET_FILTER": {
       const filters = { ...state.filters };
-      if (action.filter === undefined) delete filters[action.axisId];
-      else filters[action.axisId] = action.filter;
-      return { ...state, filters };
-    }
-
-    case "TOGGLE_ORDINAL": {
       const axis = state.config.axes.find((a) => a.id === action.axisId);
-      if (!axis || axis.kind !== "ordinal") return state;
-      const existing = state.filters[action.axisId];
-      // no active filter means every value is enabled
-      const enabled =
-        existing?.kind === "ordinal" ? new Set(existing.enabled) : new Set(axis.values);
-      if (enabled.has(action.value)) enabled.delete(action.value);
-      else enabled.add(action.value);
-      const filters = { ...state.filters };
-      if (enabled.size === axis.values.length) delete filters[action.axisId]; // back to unfiltered
-      else filters[action.axisId] = { kind: "ordinal", enabled };
+      // an ordinal filter enabling every value is no filter at all
+      const allEnabled =
+        action.filter?.kind === "ordinal" &&
+        axis?.kind === "ordinal" &&
+        action.filter.enabled.size === axis.values.length;
+      if (action.filter === undefined || allEnabled) delete filters[action.axisId];
+      else filters[action.axisId] = action.filter;
       return { ...state, filters };
     }
 

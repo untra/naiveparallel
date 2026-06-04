@@ -224,8 +224,6 @@ export interface NaiveParallelData<T extends DataObj = DataObj> {
 
   // ---- commit-time updaters ----
   setFilter: (axisId: string, filter: AxisFilter | undefined) => void;
-  /** Toggles a single ordinal value on/off (starting from all-enabled). */
-  toggleOrdinalValue: (axisId: string, value: string) => void;
   /** Unhides a known axis, or infers and appends a new one from a data path. */
   addAxis: (path: Path) => void;
   removeAxis: (axisId: string) => void;

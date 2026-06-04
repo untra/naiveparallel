@@ -52,10 +52,10 @@ describe("useNaiveParallel", () => {
     expect(stats.max).toBe(130);
   });
 
-  it("toggles ordinal values through the context", () => {
+  it("applies ordinal filters through setFilter", () => {
     const { result } = renderHook(() => useNaiveParallel(), { wrapper });
     act(() => {
-      result.current.toggleOrdinalValue("type1", "Grass");
+      result.current.setFilter("type1", { kind: "ordinal", enabled: new Set(["Fire", "Water"]) });
     });
     expect(result.current.filteredData.map((r) => r.id)).toEqual([2, 3]);
   });

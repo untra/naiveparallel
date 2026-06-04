@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNaiveParallel } from "../../context/NaiveParallelContext";
-import type { NumericalAxis } from "../../types";
+import type { AxisFilter, OrdinalAxis, ParallelAxis } from "../../types";
 import { useChartLayout } from "./ChartLayoutContext";
 
 export interface BrushState {
@@ -23,33 +23,61 @@ interface Gesture {
   /** "new" draws a fresh extent; "move" slides the committed one, size preserved. */
   mode: "new" | "move";
   startY: number;
-  /** move mode: pointer offset from the extent's top edge. */
+  /** move mode (numerical): pointer offset from the extent's top edge. */
   grabOffset: number;
-  /** move mode: the extent's pixel size, which never changes. */
+  /** move mode (numerical): the extent's pixel size, which never changes. */
   size: number;
   moved: boolean;
+  /** move mode (ordinal): first enabled value index at grab time. */
+  startIndex: number;
+  /** move mode (ordinal): how many values are enabled, which never changes. */
+  count: number;
 }
 
 /**
- * Pointer-event brushing for a numerical axis track, in the spirit of the
- * reference d3.brushY ('brush end' + rAF-coalesced updates):
+ * The enabled values as a contiguous index run [first, last] in the axis'
+ * sort order, or null when the set has gaps (or strays outside the axis).
+ */
+export function contiguousRun(
+  values: ReadonlyArray<string>,
+  enabled: ReadonlySet<string>
+): [number, number] | null {
+  const indices: number[] = [];
+  values.forEach((value, i) => {
+    if (enabled.has(value)) indices.push(i);
+  });
+  if (indices.length === 0 || indices.length !== enabled.size) return null;
+  const first = indices[0];
+  const last = indices[indices.length - 1];
+  return last - first + 1 === indices.length ? [first, last] : null;
+}
+
+/**
+ * Pointer-event brushing for an axis track, in the spirit of the reference
+ * d3.brushY ('brush end' + rAF-coalesced updates):
  *
  * - dragging an empty track draws a new range;
  * - grabbing an existing brushed range slides it along the axis, keeping
- *   its size;
- * - the range filter applies **live** while dragging (one rAF-throttled
- *   commit per frame), so rows, stats, and markers update immediately;
+ *   its size (numerical) or its value count (ordinal);
+ * - the filter applies **live** while dragging (one rAF-throttled commit
+ *   per frame), so rows, stats, and markers update immediately;
  * - brushing an axis selects it (the last-brushed axis is the active one);
  * - a click on the empty track clears the filter; a click on the brushed
  *   range leaves it untouched.
+ *
+ * Ordinal axes filter to a **contiguous run of values**: the extent snaps to
+ * whole value bands (point ± step/2) and commits the covered values as the
+ * enabled set. Sliding moves in index space — never by re-inverting the
+ * snapped band, whose edges sit exactly on nearest-neighbor tie points.
  */
-export function useBrush(axis: NumericalAxis): BrushState {
+export function useBrush(axis: ParallelAxis): BrushState {
   const { filters, setFilter, selectAxis } = useNaiveParallel();
   const layout = useChartLayout();
   const [extent, setExtent] = useState<[number, number] | null>(null);
   const gesture = useRef<Gesture | null>(null);
   const frame = useRef<number | null>(null);
-  const pendingExtent = useRef<[number, number] | null>(null);
+  const pendingFilter = useRef<AxisFilter | null>(null);
+  const lastFilter = useRef<AxisFilter | null>(null);
 
   useEffect(
     () => () => {
@@ -67,28 +95,56 @@ export function useBrush(axis: NumericalAxis): BrushState {
     return Math.max(trackTop, Math.min(trackBottom, e.clientY - rect.top));
   };
 
-  const filterOf = (pixelExtent: [number, number]) => {
+  /** The snapped pixel band covering the value index run [first, last]. */
+  const bandOf = (ordinal: OrdinalAxis, first: number, last: number): [number, number] | null => {
+    const step = scale.step();
+    const top = scale.y(ordinal.values[first]);
+    const bottom = scale.y(ordinal.values[last]);
+    if (step === null || !Number.isFinite(step) || step <= 0 || top === null || bottom === null)
+      return null;
+    return [top - step / 2, bottom + step / 2];
+  };
+
+  const ordinalFilterOf = (ordinal: OrdinalAxis, first: number, last: number): AxisFilter => ({
+    kind: "ordinal",
+    enabled: new Set(ordinal.values.slice(first, last + 1)),
+  });
+
+  /** The index run covered by a raw pixel extent (nearest value at each end). */
+  const runOf = (ordinal: OrdinalAxis, pixelExtent: [number, number]): [number, number] | null => {
+    const a = scale.invertPoint(pixelExtent[0]);
+    const b = scale.invertPoint(pixelExtent[1]);
+    if (a === null || b === null) return null;
+    const i = ordinal.values.indexOf(a);
+    const j = ordinal.values.indexOf(b);
+    return i <= j ? [i, j] : [j, i];
+  };
+
+  const filterOf = (pixelExtent: [number, number]): AxisFilter | undefined => {
+    if (axis.kind === "ordinal") {
+      const run = runOf(axis, pixelExtent);
+      return run ? ordinalFilterOf(axis, run[0], run[1]) : undefined;
+    }
     // pixel top is the high value (numerical scales render high at top)
     const hi = scale.invert(pixelExtent[0]);
     const lo = scale.invert(pixelExtent[1]);
     if (lo === null || hi === null) return undefined;
-    return { kind: "numeric" as const, min: Math.min(lo, hi), max: Math.max(lo, hi) };
+    return { kind: "numeric", min: Math.min(lo, hi), max: Math.max(lo, hi) };
   };
 
   /** rAF-throttled live filter application (port of the reference scheduleUpdate). */
   const applyLive = useCallback(
-    (pixelExtent: [number, number]) => {
-      pendingExtent.current = pixelExtent;
+    (filter: AxisFilter | undefined) => {
+      if (filter === undefined) return;
+      pendingFilter.current = filter;
       if (frame.current !== null) return;
       frame.current = requestAnimationFrame(() => {
         frame.current = null;
-        if (pendingExtent.current === null) return;
-        const filter = filterOf(pendingExtent.current);
-        if (filter) setFilter(axis.id, filter);
+        if (pendingFilter.current === null) return;
+        setFilter(axis.id, pendingFilter.current);
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [axis.id, setFilter, layout]
+    [axis.id, setFilter]
   );
 
   const onPointerDown = useCallback(
@@ -96,9 +152,10 @@ export function useBrush(axis: NumericalAxis): BrushState {
       e.currentTarget.setPointerCapture(e.pointerId);
       const y = localY(e);
       selectAxis(axis.id); // the brushed axis becomes the active/selected one
+      lastFilter.current = null;
 
       const committed = filters[axis.id];
-      if (committed?.kind === "numeric") {
+      if (axis.kind === "numerical" && committed?.kind === "numeric") {
         const top = scale.y(committed.max);
         const bottom = scale.y(committed.min);
         if (top !== null && bottom !== null && y >= top && y <= bottom) {
@@ -109,16 +166,45 @@ export function useBrush(axis: NumericalAxis): BrushState {
             grabOffset: y - top,
             size: bottom - top,
             moved: false,
+            startIndex: 0,
+            count: 0,
           };
           setExtent([top, bottom]);
           return;
         }
       }
-      gesture.current = { mode: "new", startY: y, grabOffset: 0, size: 0, moved: false };
-      setExtent([y, y]);
+      if (axis.kind === "ordinal" && committed?.kind === "ordinal") {
+        // only a contiguous run is a grabbable band; gaps fall through to a new brush
+        const run = contiguousRun(axis.values, committed.enabled);
+        const band = run && bandOf(axis, run[0], run[1]);
+        if (run && band && y >= band[0] && y <= band[1]) {
+          gesture.current = {
+            mode: "move",
+            startY: y,
+            grabOffset: y - band[0],
+            size: band[1] - band[0],
+            moved: false,
+            startIndex: run[0],
+            count: run[1] - run[0] + 1,
+          };
+          setExtent(band);
+          return;
+        }
+      }
+      gesture.current = {
+        mode: "new",
+        startY: y,
+        grabOffset: 0,
+        size: 0,
+        moved: false,
+        startIndex: 0,
+        count: 0,
+      };
+      const run = axis.kind === "ordinal" ? runOf(axis, [y, y]) : null;
+      setExtent(axis.kind === "ordinal" && run ? (bandOf(axis, run[0], run[1]) ?? [y, y]) : [y, y]);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [axis.id, filters, layout, selectAxis]
+    [axis, filters, layout, selectAxis]
   );
 
   const onPointerMove = useCallback(
@@ -129,19 +215,38 @@ export function useBrush(axis: NumericalAxis): BrushState {
       if (Math.abs(y - g.startY) >= CLICK_TOLERANCE) g.moved = true;
 
       let next: [number, number];
-      if (g.mode === "move") {
+      let filter: AxisFilter | undefined;
+      if (axis.kind === "ordinal") {
+        const step = scale.step();
+        let run: [number, number] | null;
+        if (g.mode === "move" && step !== null && Number.isFinite(step) && step > 0) {
+          // slide in index space: re-inverting the snapped band would land on
+          // nearest-neighbor tie points and grow the run by one
+          const shift = Math.round((y - g.startY) / step);
+          const first = Math.max(0, Math.min(axis.values.length - g.count, g.startIndex + shift));
+          run = [first, first + g.count - 1];
+        } else {
+          run = runOf(axis, [Math.min(g.startY, y), Math.max(g.startY, y)]);
+        }
+        if (run === null) return;
+        next = bandOf(axis, run[0], run[1]) ?? [Math.min(g.startY, y), Math.max(g.startY, y)];
+        filter = ordinalFilterOf(axis, run[0], run[1]);
+      } else if (g.mode === "move") {
         const top = Math.max(trackTop, Math.min(trackBottom - g.size, y - g.grabOffset));
         next = [top, top + g.size];
+        filter = filterOf(next);
       } else {
         next = [Math.min(g.startY, y), Math.max(g.startY, y)];
+        filter = filterOf(next);
       }
       setExtent(next);
+      if (filter) lastFilter.current = filter;
       // live filtering: rows in the changed range show up right away —
       // but not before a new-brush drag is distinguishable from a click
-      if (g.moved) applyLive(next);
+      if (g.moved) applyLive(filter);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [applyLive, layout]
+    [applyLive, axis, layout]
   );
 
   const onPointerUp = useCallback(
@@ -153,9 +258,10 @@ export function useBrush(axis: NumericalAxis): BrushState {
         cancelAnimationFrame(frame.current);
         frame.current = null;
       }
-      pendingExtent.current = null;
+      pendingFilter.current = null;
       const y = localY(e);
-      const finalExtent = extent;
+      const finalFilter = lastFilter.current;
+      lastFilter.current = null;
       setExtent(null);
 
       if (!g.moved && Math.abs(y - g.startY) < CLICK_TOLERANCE) {
@@ -163,13 +269,10 @@ export function useBrush(axis: NumericalAxis): BrushState {
         if (g.mode === "new") setFilter(axis.id, undefined);
         return;
       }
-      if (finalExtent) {
-        const filter = filterOf(finalExtent);
-        if (filter) setFilter(axis.id, filter);
-      }
+      if (finalFilter) setFilter(axis.id, finalFilter);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [axis.id, extent, layout, setFilter]
+    [axis.id, layout, setFilter]
   );
 
   return {

@@ -70,10 +70,6 @@ export function NaiveParallelProvider<T extends DataObj>(props: NaiveParallelPro
     (axisId: string, filter: AxisFilter | undefined) => dispatch({ type: "SET_FILTER", axisId, filter }),
     []
   );
-  const toggleOrdinalValue = useCallback(
-    (axisId: string, value: string) => dispatch({ type: "TOGGLE_ORDINAL", axisId, value }),
-    []
-  );
   const addAxis = useCallback(
     (path: Path) => {
       const axis = inferAxis({ path, values: collectValues(data, path), maxOrdinal: MAX_ORDINAL });
@@ -111,7 +107,6 @@ export function NaiveParallelProvider<T extends DataObj>(props: NaiveParallelPro
       colorizeAxis,
       colorOf: colorOf as (row: DataObj) => string,
       setFilter,
-      toggleOrdinalValue,
       addAxis,
       removeAxis,
       setAxisHidden,
@@ -130,7 +125,6 @@ export function NaiveParallelProvider<T extends DataObj>(props: NaiveParallelPro
       colorizeAxis,
       colorOf,
       setFilter,
-      toggleOrdinalValue,
       addAxis,
       removeAxis,
       setAxisHidden,

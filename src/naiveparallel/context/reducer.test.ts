@@ -25,25 +25,26 @@ describe("parallelReducer", () => {
     expect(state.filters.hp).toBeUndefined();
   });
 
-  it("toggles ordinal values starting from all-enabled", () => {
+  it("stores a partial ordinal filter as-is", () => {
     let state = freshState();
-    state = parallelReducer(state, { type: "TOGGLE_ORDINAL", axisId: "type1", value: "Fire" });
+    state = parallelReducer(state, {
+      type: "SET_FILTER",
+      axisId: "type1",
+      filter: { kind: "ordinal", enabled: new Set(["Grass", "Water"]) },
+    });
     const filter = state.filters.type1 as OrdinalFilter;
     expect(filter.kind).toBe("ordinal");
-    expect(filter.enabled.has("Fire")).toBe(false);
-    expect(filter.enabled.has("Grass")).toBe(true);
+    expect(filter.enabled).toEqual(new Set(["Grass", "Water"]));
   });
 
-  it("removes the ordinal filter when every value is re-enabled", () => {
+  it("deletes an ordinal filter that enables every value", () => {
     let state = freshState();
-    state = parallelReducer(state, { type: "TOGGLE_ORDINAL", axisId: "type1", value: "Fire" });
-    state = parallelReducer(state, { type: "TOGGLE_ORDINAL", axisId: "type1", value: "Fire" });
+    state = parallelReducer(state, {
+      type: "SET_FILTER",
+      axisId: "type1",
+      filter: { kind: "ordinal", enabled: new Set(["Fire", "Grass", "Water"]) },
+    });
     expect(state.filters.type1).toBeUndefined();
-  });
-
-  it("ignores ordinal toggles on numerical axes", () => {
-    const state = freshState();
-    expect(parallelReducer(state, { type: "TOGGLE_ORDINAL", axisId: "hp", value: "x" })).toBe(state);
   });
 
   it("unhides an existing axis on ADD_AXIS", () => {

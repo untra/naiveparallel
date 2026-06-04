@@ -35,9 +35,7 @@ export function Tests() {
     <main style={{ padding: "1rem" }}>
       <h1>Test scenarios</h1>
       <p>
-        Numbered live scenarios, in the spirit of{" "}
-        <a href="https://naiveasync.untra.io/#/test">naiveasync's test page</a>. Each demonstrates
-        one capability of the compound component.
+        Numbered live scenarios. Each demonstrates one capability of the compound component.
       </p>
 
       <Scenario
@@ -94,8 +92,8 @@ export function Tests() {
 
       <Scenario
         n={6}
-        title="Ordinal colors and value toggling"
-        note="type1/type2 get the canonical Pokémon type colors via inference overrides; lock colorizing to type1 in the control, and click ordinal tick labels on the axis to toggle individual values."
+        title="Ordinal colors and range brushing"
+        note="type1/type2 get the canonical Pokémon type colors via inference overrides; lock colorizing to type1 in the control, and drag along an ordinal axis to brush a contiguous range of values (the brush snaps to whole values; grab the band to slide it, click an empty track to clear)."
       >
         <NaiveParallel
           data={sample}
@@ -111,7 +109,7 @@ export function Tests() {
       <Scenario
         n={7}
         title="Boolean → ordinal"
-        note="A derived dualType boolean becomes a two-value ordinal axis (false / true), orderable and toggleable like any other ordinal."
+        note="A derived dualType boolean becomes a two-value ordinal axis (false / true), orderable and brushable like any other ordinal."
       >
         <NaiveParallel data={dualData} />
       </Scenario>

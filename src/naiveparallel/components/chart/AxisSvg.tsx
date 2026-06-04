@@ -2,7 +2,7 @@ import { useNaiveParallel } from "../../context/NaiveParallelContext";
 import type { NumericalAxis, OrdinalAxis, ParallelAxis } from "../../types";
 import { useChartLayout } from "./ChartLayoutContext";
 import { useAxisDrag } from "./useAxisDrag";
-import { useBrush } from "./useBrush";
+import { contiguousRun, useBrush } from "./useBrush";
 
 export interface AxisSvgProps {
   axis: ParallelAxis;
@@ -11,9 +11,9 @@ export interface AxisSvgProps {
 /**
  * One SVG axis: vertical line, value ticks, and the interactive regions —
  * the **label** (click to select, drag to reorder) and the **track**
- * (numerical: drag to brush a range, click to clear; ordinal: click values
- * to toggle them). Label and track never overlap, so dragging and brushing
- * cannot conflict.
+ * (drag to brush a range — numerical, or a contiguous value run snapped to
+ * whole bands — ordinal; click to clear). Label and track never overlap, so
+ * dragging and brushing cannot conflict.
  */
 export function AxisSvg({ axis }: AxisSvgProps) {
   const { config, selectAxis } = useNaiveParallel();
@@ -35,7 +35,7 @@ export function AxisSvg({ axis }: AxisSvgProps) {
       {axis.kind === "numerical" ? (
         <NumericalTrack axis={axis} top={top} bottom={bottom} />
       ) : (
-        <OrdinalTrack axis={axis} />
+        <OrdinalTrack axis={axis} top={top} bottom={bottom} />
       )}
       <text
         className="np-axis-label"
@@ -98,13 +98,28 @@ function NumericalTrack({ axis, top, bottom }: { axis: NumericalAxis; top: numbe
   );
 }
 
-function OrdinalTrack({ axis }: { axis: OrdinalAxis }) {
-  const { filters, toggleOrdinalValue } = useNaiveParallel();
+function OrdinalTrack({ axis, top, bottom }: { axis: OrdinalAxis; top: number; bottom: number }) {
+  const { filters } = useNaiveParallel();
   const layout = useChartLayout();
   const scale = layout.scaleOf(axis.id);
+  const brush = useBrush(axis);
 
   const filter = filters[axis.id];
   const enabled = (value: string) => filter?.kind !== "ordinal" || filter.enabled.has(value);
+
+  // the committed band: only a contiguous run draws (and grabs) as one; a
+  // non-contiguous programmatic set still dims its excluded ticks below
+  let committed: [number, number] | null = null;
+  if (filter?.kind === "ordinal") {
+    const run = contiguousRun(axis.values, filter.enabled);
+    const step = scale.step();
+    const first = run && scale.y(axis.values[run[0]]);
+    const last = run && scale.y(axis.values[run[1]]);
+    if (step !== null && Number.isFinite(step) && step > 0 && first !== null && last !== null) {
+      committed = [first - step / 2, last + step / 2];
+    }
+  }
+  const active = brush.extent ?? committed;
 
   return (
     <g className="np-axis-track">
@@ -121,12 +136,30 @@ function OrdinalTrack({ axis }: { axis: OrdinalAxis }) {
             dy="0.32em"
             textAnchor="end"
             fill={axis.colors[tick.value]}
-            onClick={() => toggleOrdinalValue(axis.id, tick.value)}
           >
             {tick.value}
           </text>
         </g>
       ))}
+      {active && (
+        <rect
+          className="np-brush"
+          data-testid={`np-brush-${axis.id}`}
+          x={-8}
+          width={16}
+          y={active[0]}
+          height={Math.max(0, active[1] - active[0])}
+        />
+      )}
+      <rect
+        className="np-brush-track"
+        x={-10}
+        width={20}
+        y={top}
+        height={bottom - top}
+        fill="transparent"
+        {...brush.handlers}
+      />
     </g>
   );
 }

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import React from "react";
 import { describe, expect, it } from "vitest";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
 import type { NumericFilter, OrdinalFilter } from "../types";
@@ -203,8 +204,11 @@ describe("multiple axes filtered at once", () => {
     fireEvent.pointerMove(hpTrack, { clientY: 464, pointerId: 1 });
     fireEvent.pointerUp(hpTrack, { clientY: 464, pointerId: 1 });
 
-    // toggle Fire off on type1 -> only row 1 (Grass) passes both filters
-    fireEvent.click(screen.getByText("Fire"));
+    // brush type1 Grass..Water -> drops Fire; only row 1 (Grass) passes both filters
+    const typeTrack = container.querySelector('[data-testid="np-axis-type1"] .np-brush-track')!;
+    fireEvent.pointerDown(typeTrack, { clientY: 254, pointerId: 1 });
+    fireEvent.pointerMove(typeTrack, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(typeTrack, { clientY: 464, pointerId: 1 });
 
     expect(screen.getByTestId("probe-hp").textContent).toBe("45-98");
     expect(screen.getByTestId("probe-type1").textContent).toBe("Grass,Water");
@@ -225,20 +229,170 @@ describe("multiple axes filtered at once", () => {
   });
 });
 
-describe("toggling ordinal values", () => {
-  it("disables a value from its tick label", () => {
-    render(
+describe("brushing an ordinal axis", () => {
+  // type1 values sort to ["Fire", "Grass", "Water"]; track 44..464 (420px),
+  // scalePoint padding 0.5 -> step 140; points Fire y=114, Grass y=254, Water y=394.
+  // value bands (point ± step/2): Fire 44..184, Grass 184..324, Water 324..464.
+
+  function renderChart(extra?: React.ReactNode) {
+    return render(
       <NaiveParallel data={data}>
         <ParallelChart />
         <FilterProbe />
+        {extra}
       </NaiveParallel>
     );
-    fireEvent.click(screen.getByText("Fire"));
+  }
+
+  function typeTrack(container: HTMLElement) {
+    return container.querySelector('[data-testid="np-axis-type1"] .np-brush-track')!;
+  }
+
+  it("commits a contiguous value range on pointer-up", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 254, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    // nearest points: 254 -> Grass, 464 -> Water
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Grass,Water");
     expect(screen.getByTestId("probe-count").textContent).toBe("2");
-    fireEvent.click(screen.getByText("Fire")); // toggle back on
+  });
+
+  it("brushes down to a single value", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 394, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Water");
+    expect(screen.getByTestId("probe-count").textContent).toBe("1");
+  });
+
+  it("normalizes a full-range brush to no filter", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 44, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("none");
+    expect(screen.getByTestId("probe-count").textContent).toBe("3");
+  });
+
+  it("applies the filter live while brushing, before pointer-up", async () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 254, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    await nextFrame(); // pointer still down — the rows already updated
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Grass,Water");
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+  });
+
+  it("clears the filter on a click on the empty track", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 394, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Water");
+
+    fireEvent.pointerDown(track, { clientY: 114, pointerId: 1 }); // Fire region, outside the band
+    fireEvent.pointerUp(track, { clientY: 115, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("none");
+    expect(screen.getByTestId("probe-count").textContent).toBe("3");
+  });
+
+  it("selects the brushed axis", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 394, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-selected").textContent).toBe("type1");
+  });
+
+  it("snaps the brush rect to whole value bands while dragging", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 254, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    const rect = screen.getByTestId("np-brush-type1");
+    // Grass..Water band: [254 - 70, 394 + 70]
+    expect(Number(rect.getAttribute("y"))).toBeCloseTo(184, 6);
+    expect(Number(rect.getAttribute("height"))).toBeCloseTo(280, 6);
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+  });
+
+  it("slides a grabbed range along the axis, preserving the value count", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    // commit {Fire, Grass}
+    fireEvent.pointerDown(track, { clientY: 44, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 254, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 254, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Fire,Grass");
+
+    // grab inside the band (44..324) and drag down one step
+    fireEvent.pointerDown(track, { clientY: 180, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 320, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 320, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Grass,Water");
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+  });
+
+  it("leaves the filter intact when the band is clicked without moving", () => {
+    const { container } = renderChart();
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 394, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 464, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 464, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Water");
+
+    fireEvent.pointerDown(track, { clientY: 400, pointerId: 1 }); // inside the Water band
+    fireEvent.pointerUp(track, { clientY: 400, pointerId: 1 });
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Water");
+  });
+
+  it("starts a fresh brush over a non-contiguous programmatic filter (no move-mode, no band rect)", () => {
+    const { container } = renderChart(<NonContiguousSetter />);
+    fireEvent.click(screen.getByText("set-non-contiguous"));
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Fire,Water");
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+    // a non-contiguous set has no band to draw or grab
+    expect(screen.queryByTestId("np-brush-type1")).not.toBeInTheDocument();
+
+    const track = typeTrack(container);
+    fireEvent.pointerDown(track, { clientY: 254, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientY: 320, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientY: 320, pointerId: 1 });
+    // a fresh brush replaces the set rather than sliding it
+    expect(screen.getByTestId("probe-type1").textContent).toBe("Grass");
+    expect(screen.getByTestId("probe-count").textContent).toBe("1");
+  });
+
+  it("does not toggle values from their tick labels", () => {
+    renderChart();
+    fireEvent.click(screen.getByText("Fire"));
+    expect(screen.getByTestId("probe-type1").textContent).toBe("none");
     expect(screen.getByTestId("probe-count").textContent).toBe("3");
   });
 });
+
+function NonContiguousSetter() {
+  const { setFilter } = useNaiveParallel();
+  return (
+    <button
+      onClick={() =>
+        setFilter("type1", { kind: "ordinal", enabled: new Set(["Fire", "Water"]) })
+      }
+    >
+      set-non-contiguous
+    </button>
+  );
+}
 
 describe("axis drag reorder", () => {
   it("commits a new axis order on pointer-up", () => {

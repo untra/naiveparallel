@@ -62,6 +62,10 @@ describe("buildScale (numerical)", () => {
     expect(ticks.length).toBeGreaterThan(2);
     expect(ticks[0].y).toBeGreaterThan(ticks[ticks.length - 1].y); // low value sits lower
   });
+
+  it("has no point step", () => {
+    expect(scale.step()).toBeNull();
+  });
 });
 
 describe("buildScale (ordinal)", () => {
@@ -87,5 +91,10 @@ describe("buildScale (ordinal)", () => {
   it("yields null for non-string lookups and numeric inversion", () => {
     expect(scale.y(42)).toBeNull();
     expect(scale.invert(150)).toBeNull();
+  });
+
+  it("exposes the point-scale step", () => {
+    // padding 0.5, 3 values over 300px: step = 300 / 3
+    expect(scale.step()).toBe(100);
   });
 });

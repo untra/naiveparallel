@@ -58,12 +58,7 @@
   pointer-events: all;
 }
 
-/* ordinal value toggling */
-
-.np-ordinal-value .np-axis-tick-label {
-  cursor: pointer;
-  pointer-events: all;
-}
+/* ordinal value brushing: labels are inert so they never swallow track pointer events */
 
 .np-ordinal-disabled .np-axis-tick-label {
   opacity: 0.25;

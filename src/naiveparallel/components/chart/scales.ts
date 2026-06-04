@@ -15,6 +15,8 @@ export interface AxisScale {
   invert(py: number): number | null;
   /** Ordinal only: the nearest value for a pixel (nearest-neighbor inversion). */
   invertPoint(py: number): string | null;
+  /** Ordinal only: the pixel distance between adjacent value points. */
+  step(): number | null;
 }
 
 /** Builds the scale mapping an axis' domain onto a vertical pixel range (top, bottom). */
@@ -36,6 +38,9 @@ export function buildScale(axis: ParallelAxis, range: [number, number]): AxisSca
         return scale.invert(py);
       },
       invertPoint() {
+        return null;
+      },
+      step() {
         return null;
       },
     };
@@ -68,6 +73,9 @@ export function buildScale(axis: ParallelAxis, range: [number, number]): AxisSca
         }
       }
       return best;
+    },
+    step() {
+      return scale.step();
     },
   };
 }
