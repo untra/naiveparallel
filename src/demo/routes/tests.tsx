@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import {
+  deriveConfig,
   NaiveParallel,
   ParallelChart,
   ParallelColumn,
@@ -30,6 +31,43 @@ export function Tests() {
     () => sample.map((m) => ({ id: m.id, hp: m.stats.hp, speed: m.stats.speed, dualType: m.type1 !== m.type2 })),
     []
   );
+
+  const rgbData = useMemo(
+    () =>
+      sample.map((m) => ({
+        id: m.id,
+        attack: m.stats.attack,
+        defense: m.stats.defense,
+        speed: m.stats.speed,
+        type1: m.type1,
+      })),
+    []
+  );
+  const rgbConfig = useMemo(() => {
+    const derived = deriveConfig(rgbData);
+    return {
+      ...derived,
+      // stat channels first so they drive R/G/B; the id axis follows
+      axes: [...derived.axes.filter((a) => a.id !== "id"), ...derived.axes.filter((a) => a.id === "id")],
+      colorizeMode: "components" as const,
+    };
+  }, [rgbData]);
+
+  const divergingData = useMemo(
+    () =>
+      sample.map((m) => ({
+        id: m.id,
+        // attack minus defense crosses zero naturally: glass cannons positive, walls negative
+        delta: m.stats.attack - m.stats.defense,
+        hp: m.stats.hp,
+        speed: m.stats.speed,
+      })),
+    []
+  );
+  const divergingConfig = useMemo(() => {
+    const derived = deriveConfig(divergingData);
+    return { ...derived, colorizeAxisId: "delta", colorizeMode: "locked" as const };
+  }, [divergingData]);
 
   return (
     <main style={{ padding: "1rem" }}>
@@ -128,7 +166,7 @@ export function Tests() {
       <Scenario
         n={9}
         title="Colorize: follow vs locked"
-        note="By default row colors follow the selected axis (blue→red ramp for numerical, value colors for ordinal). Use the control's colorize dropdown to lock colors to one axis while selecting others."
+        note="By default row colors follow the selected axis. Each numerical axis sweeps between its own complementary bright color pair; an axis whose domain crosses zero diverges red (negative) → yellow (zero) → green (positive); temporal axes ramp blue (early) → red (late); ordinal axes use their value colors. Use the control's colorize dropdown to lock colors to one axis while selecting others."
       >
         <NaiveParallel data={sample} />
       </Scenario>
@@ -233,6 +271,22 @@ export function Tests() {
           <ParallelColumn />
           <ParallelControl />
         </NaiveParallel>
+      </Scenario>
+
+      <Scenario
+        n={15}
+        title="Colorize: RGB color components"
+        note="Pick 'color components' in the colorize dropdown: the first three numerical axes become the R, G, and B channels, so each row's color encodes its placement on all three at once (low on everything → black, high on everything → white). Reorder the axes (↑/↓ or drag) to remap which axes drive which channel."
+      >
+        <NaiveParallel data={rgbData} configuration={rgbConfig} />
+      </Scenario>
+
+      <Scenario
+        n={16}
+        title="Colorize: diverging at zero"
+        note="Colorizing is locked to delta (attack − defense), whose domain crosses zero: rows diverge red (most negative) → yellow (exactly zero) → green (most positive), with the yellow pivot anchored at value 0 — not the domain midpoint. An all-negative axis spans only the red→orange segment: yellow strictly means zero."
+      >
+        <NaiveParallel data={divergingData} configuration={divergingConfig} />
       </Scenario>
     </main>
   );

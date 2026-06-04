@@ -96,6 +96,11 @@ export function axisValue(axis: ParallelAxis, row: DataObj): number | string | n
       // yield numbers" invariant for everything downstream
       return typeof raw === "string" ? parseTemporal(axis.temporal.pattern, raw) : null;
     }
+    if (axis.temporal?.source === "number") {
+      // forced epoch-ms columns share parseTemporal's epoch floor: pre-1970
+      // (negative) timestamps are missing, not values
+      return typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : null;
+    }
     return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
   }
   return ordinalValueOf(axis, raw);

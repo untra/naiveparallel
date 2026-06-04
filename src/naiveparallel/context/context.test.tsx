@@ -85,6 +85,20 @@ describe("useNaiveParallel", () => {
     expect(result.current.colorizeAxis?.id).toBe("type1");
     expect(typeof result.current.colorOf(data[0])).toBe("string");
   });
+
+  it("colorizes by RGB components, remapping channels on reorder", () => {
+    const { result } = renderHook(() => useNaiveParallel(), { wrapper });
+    act(() => {
+      result.current.setColorize(null, "components");
+    });
+    expect(result.current.colorizeAxis).toBeNull();
+    // channels: R = id [1,3], G = hp [45,130]; row 2 -> id 2 (128), hp 78 (99)
+    expect(result.current.colorOf(data[1])).toBe("rgb(128, 99, 0)");
+    act(() => {
+      result.current.reorderAxes(["hp", "id", "type1"]);
+    });
+    expect(result.current.colorOf(data[1])).toBe("rgb(99, 128, 0)");
+  });
 });
 
 describe("interaction context", () => {

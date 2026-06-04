@@ -45,6 +45,18 @@ describe("inferAxis", () => {
     expect(axis.domain).toEqual([50, 100]);
   });
 
+  it("honors a label override for display while id and path stay the raw path", () => {
+    const axis = inferAxis({
+      path: "2B",
+      values: [12, 30, 45],
+      override: { label: "doubles" },
+      maxOrdinal: 64,
+    }) as NumericalAxis;
+    expect(axis.label).toBe("doubles");
+    expect(axis.id).toBe("2B"); // filters/selection key off id, untouched by the label
+    expect(axis.path).toBe("2B");
+  });
+
   it("infers an ordinal axis from strings, ordered low to high", () => {
     const axis = inferAxis({
       path: "type",
@@ -167,6 +179,28 @@ describe("inferAxis (temporal)", () => {
     expect(axis.kind).toBe("numerical");
     expect(axis.temporal).toEqual({ pattern: "iso-datetime", source: "number" });
     expect(axis.domain).toEqual([ms, ms + 86_400_000]);
+  });
+
+  it("falls back to ordinal when a string date column predates the 1970 epoch", () => {
+    const axis = inferAxis({
+      path: "d",
+      values: ["2024-01-15", "1969-06-01"],
+      maxOrdinal: 64,
+    }) as OrdinalAxis;
+    expect(axis.kind).toBe("ordinal");
+    expect(axis.values).toContain("1969-06-01");
+  });
+
+  it("excludes negative epoch-ms from a forced-numeric temporal domain", () => {
+    const day = 86_400_000;
+    const axis = inferAxis({
+      path: "t",
+      values: [-day, 0, day],
+      override: { kind: "temporal" },
+      maxOrdinal: 64,
+    }) as NumericalAxis;
+    expect(axis.temporal).toEqual({ pattern: "iso-datetime", source: "number" });
+    expect(axis.domain).toEqual([0, day]);
   });
 
   it("leaves a forced-temporal but unparseable string column ordinal", () => {

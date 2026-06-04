@@ -638,9 +638,48 @@ describe("ParallelControl", () => {
     fireEvent.change(screen.getByLabelText("colorize"), { target: { value: "type1" } });
     expect(screen.getByTestId("colorize-axis").textContent).toBe("type1");
   });
+
+  it("switches colorizing to RGB components mode", () => {
+    const rgb = [
+      { id: 1, hp: 0, attack: 0 },
+      { id: 2, hp: 50, attack: 100 },
+      { id: 3, hp: 100, attack: 0 },
+    ];
+    render(
+      <NaiveParallel data={rgb}>
+        <ParallelControl />
+        <ParallelRow>{() => <ColorOfProbe row={rgb[2]} />}</ParallelRow>
+      </NaiveParallel>
+    );
+    fireEvent.change(screen.getByLabelText("colorize"), { target: { value: "__components" } });
+    expect(screen.getByTestId("colorize-mode").textContent).toBe("components");
+    // channels: R = id [1,3], G = hp [0,100], B = attack [0,100]; row 3 -> 255, 255, 0
+    expect(screen.getByTestId("color-of").textContent).toBe("rgb(255, 255, 0)");
+  });
+
+  it("offers components mode only with three numerical axes", () => {
+    render(
+      <NaiveParallel data={data}>
+        <ParallelControl />
+      </NaiveParallel>
+    );
+    const select = screen.getByLabelText("colorize") as HTMLSelectElement;
+    // data has only two numerical axes (id, hp)
+    expect([...select.options].some((o) => o.value === "__components")).toBe(false);
+  });
 });
 
 function ColorizeProbe() {
   const { colorizeAxis } = useNaiveParallel();
   return <span data-testid="colorize-axis">{colorizeAxis?.id}</span>;
+}
+
+function ColorOfProbe({ row }: { row: Record<string, unknown> }) {
+  const { colorOf, config } = useNaiveParallel();
+  return (
+    <>
+      <span data-testid="colorize-mode">{config.colorizeMode}</span>
+      <span data-testid="color-of">{colorOf(row)}</span>
+    </>
+  );
 }

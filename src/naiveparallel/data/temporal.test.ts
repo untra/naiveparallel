@@ -59,6 +59,20 @@ describe("parseTemporal", () => {
     expect(parseTemporal("iso-date", "not a date")).toBeNull();
   });
 
+  it("rejects dates before the 1970 unix epoch", () => {
+    expect(parseTemporal("iso-date", "1969-12-31")).toBeNull();
+    expect(parseTemporal("mon-d-y", "Dec 31 1969")).toBeNull();
+    expect(parseTemporal("us-slash", "6/1/1950")).toBeNull();
+  });
+
+  it("accepts the epoch itself (1970-01-01 is ms 0)", () => {
+    expect(parseTemporal("iso-date", "1970-01-01")).toBe(0);
+  });
+
+  it("rejects datetimes whose tz offset resolves before the epoch", () => {
+    expect(parseTemporal("iso-datetime", "1970-01-01T00:00:00+01:00")).toBeNull();
+  });
+
   it("returns null on out-of-range components (month 13)", () => {
     expect(parseTemporal("us-slash", "13/1/2024")).toBeNull();
   });
@@ -94,6 +108,10 @@ describe("detectTemporalPattern", () => {
 
   it("returns null when a later value is out of range", () => {
     expect(detectTemporalPattern(["1/15/2024", "13/13/2024"])).toBeNull();
+  });
+
+  it("returns null when any value predates the 1970 epoch", () => {
+    expect(detectTemporalPattern(["2024-01-15", "1969-01-01"])).toBeNull();
   });
 
   it("returns null for bare year strings", () => {

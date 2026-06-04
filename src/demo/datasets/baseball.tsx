@@ -15,7 +15,17 @@ export const baseball: DemoDataset = {
     presetConfig(rows, {
       inferOptions: {
         overrides: {
-          lgID: { colors: { AL: "#d50000", NL: "#1565c0" } }, // AL red, NL blue
+          AB: { label: "at bats" },
+          R: { label: "runs" },
+          H: { label: "hits" },
+          "2B": { label: "doubles" },
+          "3B": { label: "triples" },
+          HR: { label: "home runs" },
+          SB: { label: "steals" },
+          BB: { label: "walks" },
+          SO: { label: "strikeouts" },
+          teamID: { label: "team" },
+          lgID: { label: "league", colors: { AL: "#d50000", NL: "#1565c0" } }, // AL red, NL blue
         },
       },
       order: ["AB", "R", "H", "2B", "3B", "HR", "RBI", "SB", "BB", "SO", "teamID", "lgID"],

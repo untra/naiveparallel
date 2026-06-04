@@ -116,14 +116,25 @@ export function ParallelControl(props: ParallelControlProps) {
           colorize{" "}
           <select
             aria-label="colorize"
-            value={config.colorizeMode === "locked" ? (config.colorizeAxisId ?? "") : ""}
+            value={
+              config.colorizeMode === "locked"
+                ? (config.colorizeAxisId ?? "")
+                : config.colorizeMode === "components"
+                  ? "__components"
+                  : ""
+            }
             onChange={(e) =>
               e.target.value === ""
                 ? setColorize(null, "follow")
-                : setColorize(e.target.value, "locked")
+                : e.target.value === "__components"
+                  ? setColorize(null, "components")
+                  : setColorize(e.target.value, "locked")
             }
           >
             <option value="">follow selected axis</option>
+            {axes.filter((a) => a.kind === "numerical" && !a.hidden).length >= 3 && (
+              <option value="__components">color components (first 3 numerical → RGB)</option>
+            )}
             {axes.map((axis) => (
               <option key={axis.id} value={axis.id}>
                 lock to {axis.label}

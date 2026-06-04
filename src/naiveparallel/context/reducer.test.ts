@@ -83,6 +83,16 @@ describe("parallelReducer", () => {
     expect(state.config.colorizeMode).toBe("locked");
   });
 
+  it("switches colorizing to components mode and back", () => {
+    let state = freshState();
+    state = parallelReducer(state, { type: "SET_COLORIZE", axisId: null, mode: "components" });
+    expect(state.config.colorizeMode).toBe("components");
+    expect(state.config.colorizeAxisId).toBeNull();
+    state = parallelReducer(state, { type: "SET_COLORIZE", axisId: "hp", mode: "locked" });
+    expect(state.config.colorizeMode).toBe("locked");
+    expect(state.config.colorizeAxisId).toBe("hp");
+  });
+
   it("resets to a fresh config, clearing filters", () => {
     let state = freshState();
     state = parallelReducer(state, {

@@ -91,10 +91,12 @@ export type ParallelAxis = NumericalAxis | OrdinalAxis;
 export const MAX_ORDINAL = 64;
 
 /**
- * Row colorizing follows the selected axis by default, or can be locked to a
- * specific axis from the controls.
+ * Row colorizing follows the selected axis by default, can be locked to a
+ * specific axis from the controls, or can map the first three visible
+ * numerical axes onto the R, G, and B channels ("components") so each row's
+ * color encodes three dimensions at once — reorder the axes to remap them.
  */
-export type ColorizeMode = "follow" | "locked";
+export type ColorizeMode = "follow" | "locked" | "components";
 
 /**
  * The configuration NaiveParallel accepts (and derives when not provided):

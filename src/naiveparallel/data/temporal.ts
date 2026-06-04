@@ -93,14 +93,19 @@ const PATTERNS: TemporalPattern[] = [
  */
 const cache = new Map<string, number | null>();
 
-/** Parses a raw string against a known pattern; null when it does not conform. */
+/**
+ * Parses a raw string against a known pattern; null when it does not conform.
+ * Dates before the 1970 unix epoch are rejected (checked on the final UTC ms,
+ * after any timezone-offset adjustment) — temporal axes never go negative.
+ */
 export function parseTemporal(pattern: TemporalPatternId, raw: string): number | null {
   const key = pattern + "\0" + raw;
   const hit = cache.get(key);
   if (hit !== undefined || cache.has(key)) return hit ?? null;
   const p = PATTERNS.find((x) => x.id === pattern)!;
   const m = p.re.exec(raw);
-  const ms = m ? p.toMs(m) : null;
+  const parsed = m ? p.toMs(m) : null;
+  const ms = parsed !== null && parsed < 0 ? null : parsed;
   cache.set(key, ms);
   return ms;
 }
@@ -108,7 +113,8 @@ export function parseTemporal(pattern: TemporalPatternId, raw: string): number |
 /**
  * Detects whether a string column is temporal: the first value picks the
  * candidate pattern, and every value must parse with it. Null when the
- * column is not consistently date-like.
+ * column is not consistently date-like — including any pre-1970 value,
+ * which parseTemporal rejects.
  */
 export function detectTemporalPattern(values: ReadonlyArray<string>): TemporalPatternId | null {
   if (values.length === 0) return null;

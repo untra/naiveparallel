@@ -115,6 +115,8 @@ export function inferAxis(input: InferAxisInput): ParallelAxis | null {
     } else {
       if (!allNumbers) return null; // cannot force numbers out of non-number data
       numbers = values as number[];
+      if (temporal) numbers = numbers.filter((n) => n >= 0); // epoch floor: pre-1970 ms are missing
+      if (numbers.length === 0) return null;
     }
     let min = Infinity;
     let max = -Infinity;
