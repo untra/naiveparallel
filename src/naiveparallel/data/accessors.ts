@@ -1,4 +1,5 @@
 import type { DataObj, OrdinalAxis, ParallelAxis, Path } from "../types";
+import { parseTemporal } from "./temporal";
 
 /** Returns a function that reads the value at a dot-path within a row. */
 export function pathAccessor(path: Path): (row: DataObj) => unknown {
@@ -90,6 +91,11 @@ export function axisValue(axis: ParallelAxis, row: DataObj): number | string | n
   const raw = pathAccessor(axis.path)(row);
   if (raw == null) return null;
   if (axis.kind === "numerical") {
+    if (axis.temporal?.source === "string") {
+      // temporal string rows parse to epoch-ms, keeping the "numerical axes
+      // yield numbers" invariant for everything downstream
+      return typeof raw === "string" ? parseTemporal(axis.temporal.pattern, raw) : null;
+    }
     return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
   }
   return ordinalValueOf(axis, raw);

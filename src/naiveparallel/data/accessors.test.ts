@@ -109,4 +109,38 @@ describe("ordinalValueOf / axisValue", () => {
     expect(axisValue(numAxis, { stats: { hp: "oops" } })).toBeNull();
     expect(axisValue(numAxis, { stats: { hp: NaN } })).toBeNull();
   });
+
+  it("parses temporal string rows to epoch-ms", () => {
+    const temporalAxis: NumericalAxis = {
+      id: "released",
+      path: "released",
+      label: "released",
+      hidden: false,
+      kind: "numerical",
+      domain: [Date.UTC(2024, 0, 1), Date.UTC(2024, 11, 31)],
+      allIntegers: true,
+      allPositive: true,
+      temporal: { pattern: "iso-date", source: "string" },
+    };
+    expect(axisValue(temporalAxis, { released: "2024-06-15" })).toBe(Date.UTC(2024, 5, 15));
+    expect(axisValue(temporalAxis, { released: "not a date" })).toBeNull();
+    expect(axisValue(temporalAxis, { released: 42 })).toBeNull(); // mistyped for a string-sourced axis
+    expect(axisValue(temporalAxis, {})).toBeNull();
+  });
+
+  it("passes numbers through a number-sourced temporal axis", () => {
+    const ms = Date.UTC(2024, 0, 1);
+    const temporalAxis: NumericalAxis = {
+      id: "t",
+      path: "t",
+      label: "t",
+      hidden: false,
+      kind: "numerical",
+      domain: [ms, ms + 1000],
+      allIntegers: true,
+      allPositive: true,
+      temporal: { pattern: "iso-datetime", source: "number" },
+    };
+    expect(axisValue(temporalAxis, { t: ms })).toBe(ms);
+  });
 });
