@@ -35,13 +35,14 @@ export function NaiveParallelProvider<T extends DataObj>(props: NaiveParallelPro
   const { data, config, children } = props;
   const [state, dispatch] = useReducer(parallelReducer, config, initialParallelState);
 
-  // reinitialize (clearing filters) when the data-derived config changes
-  const firstRun = useRef(true);
+  // reinitialize (clearing filters) when the data-derived config changes.
+  // Identity-compare instead of a first-run flag: StrictMode re-runs mount
+  // effects, and a flag-based guard would fire a spurious RESET on the
+  // re-run, clobbering any dispatches children made in their mount effects.
+  const lastConfig = useRef(config);
   useEffect(() => {
-    if (firstRun.current) {
-      firstRun.current = false;
-      return;
-    }
+    if (lastConfig.current === config) return;
+    lastConfig.current = config;
     dispatch({ type: "RESET", config });
   }, [config]);
 
