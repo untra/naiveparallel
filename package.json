@@ -1,6 +1,6 @@
 {
   "name": "@untra/naiveparallel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "🪒 Naive React parallel coordinates plot for Array<T> datasets — a compound component for interactive, large-volume, multi-dimensional data exploration",
   "keywords": [
     "react",
