@@ -91,6 +91,55 @@ export function buildColorizer(axis: ParallelAxis | null): (row: DataObj) => str
   };
 }
 
+/** Hue (0..360) of an rgb triple in 0..255, or null when achromatic. */
+const rgbToHue = (r: number, g: number, b: number): number | null => {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return null;
+  const h =
+    max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return Math.round(h * 60);
+};
+
+/** Hue of any color string a colorizer can emit, or null when achromatic/unknown. */
+function hueOf(color: string): number | null {
+  let m = /^#([0-9a-f]{6})$/i.exec(color);
+  if (m) {
+    const n = parseInt(m[1], 16);
+    return rgbToHue(n >> 16, (n >> 8) & 0xff, n & 0xff);
+  }
+  m = /^#([0-9a-f]{3})$/i.exec(color);
+  if (m) {
+    const [r, g, b] = m[1].split("").map((c) => parseInt(c + c, 16));
+    return rgbToHue(r, g, b);
+  }
+  m = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/.exec(color);
+  if (m) return rgbToHue(+m[1], +m[2], +m[3]);
+  m = /^hsl\(\s*(\d+(?:\.\d+)?)\s*,/.exec(color);
+  if (m) return Math.round(+m[1]) % 360;
+  return null;
+}
+
+const muteCache = new Map<string, string>();
+
+/**
+ * The pale tint of a row color: same hue, desaturated and lightened. Muted
+ * (filtered-out) canvas strokes use this so alpha compositing converges to
+ * the tint under any overdraw — a dense pile of excluded rows can never
+ * re-saturate into the vivid row color. Achromatic or unparseable colors
+ * (named CSS colors included) tint to neutral gray.
+ */
+export function muteColor(color: string): string {
+  let muted = muteCache.get(color);
+  if (muted === undefined) {
+    const hue = hueOf(color);
+    muted = hue === null ? "hsl(0, 0%, 86%)" : `hsl(${hue}, 30%, 86%)`;
+    muteCache.set(color, muted);
+  }
+  return muted;
+}
+
 /**
  * Colorizes rows by their placement on the first three visible numerical axes
  * in display order — the R, G, and B channels respectively. Rearranging the

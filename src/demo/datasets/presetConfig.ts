@@ -15,6 +15,8 @@ export interface PresetOptions {
   select?: string;
   /** Lock row colorizing to this axis. */
   colorizeLock?: string;
+  /** Map the first three visible numerical axes onto RGB channels instead. */
+  colorize?: "components";
 }
 
 const matches = (id: string, pattern: string) =>
@@ -26,7 +28,7 @@ const matches = (id: string, pattern: string) =>
  * a colorize lock. Pure post-processing of the library's own config model.
  */
 export function presetConfig(rows: DataObj[], options: PresetOptions = {}): NaiveParallelConfig {
-  const { inferOptions, order = [], hide = [], select, colorizeLock } = options;
+  const { inferOptions, order = [], hide = [], select, colorizeLock, colorize } = options;
   const derived = deriveConfig(rows, inferOptions);
 
   const rank = new Map(order.map((id, i) => [id, i]));
@@ -39,7 +41,7 @@ export function presetConfig(rows: DataObj[], options: PresetOptions = {}): Naiv
   return {
     axes,
     selectedAxisId: select ?? derived.selectedAxisId,
-    colorizeAxisId: colorizeLock ?? null,
-    colorizeMode: colorizeLock ? "locked" : "follow",
+    colorizeAxisId: colorize ? null : (colorizeLock ?? null),
+    colorizeMode: colorize ?? (colorizeLock ? "locked" : "follow"),
   };
 }

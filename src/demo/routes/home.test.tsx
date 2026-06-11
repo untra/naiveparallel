@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import { Home } from "./home";
 
 describe("Home dataset gallery", () => {
-  it("shows six dataset tiles (three disabled) plus the upload tile", async () => {
+  it("shows six live dataset tiles plus the upload tile", async () => {
     render(<Home />);
     const group = screen.getByRole("group", { name: "datasets" });
     const tiles = group.querySelectorAll("button");
     expect(tiles).toHaveLength(7); // six datasets + load-your-own
-    expect(group.querySelectorAll("button[disabled]")).toHaveLength(3);
+    expect(group.querySelectorAll("button[disabled]")).toHaveLength(0);
     await waitFor(() => screen.getByTestId("np-chart"), { timeout: 5000 }); // pokemon auto-loads
   });
 

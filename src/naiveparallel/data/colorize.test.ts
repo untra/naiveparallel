@@ -5,6 +5,7 @@ import {
   buildColorizer,
   buildComponentColorizer,
   FALLBACK_COLOR,
+  muteColor,
   resolveColorizeAxis,
   stringToBrightGradient,
 } from "./colorize";
@@ -221,6 +222,34 @@ describe("resolveColorizeAxis", () => {
   it("resolves to no single axis in components mode", () => {
     const config = { ...deriveConfig(mons as any[]), colorizeMode: "components" as const };
     expect(resolveColorizeAxis(config)).toBeNull();
+  });
+});
+
+describe("muteColor", () => {
+  it("pales a hex color while keeping its hue", () => {
+    expect(muteColor("#FF0000")).toBe("hsl(0, 30%, 86%)");
+    expect(muteColor("#00ff00")).toBe("hsl(120, 30%, 86%)");
+    expect(muteColor("#00f")).toBe("hsl(240, 30%, 86%)"); // #rgb shorthand
+  });
+
+  it("pales rgb() strings from components mode", () => {
+    expect(muteColor("rgb(0, 0, 255)")).toBe("hsl(240, 30%, 86%)");
+    expect(muteColor("rgb(255, 128, 0)")).toBe("hsl(30, 30%, 86%)");
+  });
+
+  it("keeps the hue of hsl() strings from the temporal ramp", () => {
+    expect(muteColor("hsl(120, 85%, 55%)")).toBe("hsl(120, 30%, 86%)");
+    expect(muteColor("hsl(240, 70%, 50%)")).toBe("hsl(240, 30%, 86%)");
+  });
+
+  it("turns achromatic and unparseable colors neutral gray", () => {
+    expect(muteColor("#808080")).toBe("hsl(0, 0%, 86%)"); // no hue to keep
+    expect(muteColor(FALLBACK_COLOR)).toBe("hsl(0, 0%, 86%)"); // named color
+    expect(muteColor("not-a-color")).toBe("hsl(0, 0%, 86%)");
+  });
+
+  it("is stable across repeated calls (memoized)", () => {
+    expect(muteColor("#EE8130")).toBe(muteColor("#EE8130"));
   });
 });
 

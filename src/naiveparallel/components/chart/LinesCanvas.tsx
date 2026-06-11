@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useNaiveParallel } from "../../context/NaiveParallelContext";
 import { axisValue } from "../../data/accessors";
+import { muteColor } from "../../data/colorize";
 import type { DataObj } from "../../types";
 import { useChartLayout } from "./ChartLayoutContext";
 
 /** Opacity of rows passing the filters. */
 const ACTIVE_ALPHA = 0.5;
-/** Opacity of filtered-out (muted) rows. */
-const MUTED_ALPHA = 0.04;
+/**
+ * Opacity of filtered-out (muted) rows. Muting cannot rely on alpha alone:
+ * n overlapping strokes composite to 1-(1-alpha)^n, so a dense pile of
+ * excluded rows would converge back to the vivid row color. Muted strokes
+ * therefore also draw in muteColor() pale tints — the convergence limit.
+ */
+const MUTED_ALPHA = 0.08;
 
 function drawRow(
   ctx: CanvasRenderingContext2D,
@@ -32,8 +38,8 @@ function drawRow(
 
 /**
  * The canvas layer underneath the SVG: one polyline per row, colorized by the
- * context's colorOf, muted to a low alpha when filtered out. Redraws when a
- * filter / axis / colorize change commits — never mid-gesture.
+ * context's colorOf; filtered-out rows draw as low-alpha pale tints. Redraws
+ * when a filter / axis / colorize change commits — never mid-gesture.
  */
 export function LinesCanvas() {
   const { data, filteredData, colorOf } = useNaiveParallel();
@@ -60,7 +66,7 @@ export function LinesCanvas() {
     ctx.globalAlpha = MUTED_ALPHA;
     for (const row of data) {
       if (passing.has(row)) continue;
-      ctx.strokeStyle = colorOf(row);
+      ctx.strokeStyle = muteColor(colorOf(row));
       drawRow(ctx, row, layout);
     }
     ctx.globalAlpha = ACTIVE_ALPHA;

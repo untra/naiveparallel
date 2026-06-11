@@ -1,20 +1,18 @@
 import { baseball } from "./baseball";
 import { cars } from "./cars";
+import { colors } from "./colors";
+import { movies } from "./movies";
 import { pokemon } from "./pokemon";
+import { stocks } from "./stocks";
 import type { DemoDataset } from "./types";
 
 /**
- * The six preselected dataset+config pairs offered on the home page —
- * three defined, three slots reserved for datasets TBD.
+ * The six preselected dataset+config pairs offered on the home page. Each
+ * later tile showcases a feature: colors → "components" RGB colorize,
+ * movies → first-char ordinal mapping + diverging negative axis, stocks →
+ * 3,000+ rows with clamped domains.
  */
-export const DEMO_DATASETS: DemoDataset[] = [
-  pokemon,
-  baseball,
-  cars,
-  { id: "tbd-1", title: "coming soon", description: "a fourth dataset, TBD", disabled: true },
-  { id: "tbd-2", title: "coming soon", description: "a fifth dataset, TBD", disabled: true },
-  { id: "tbd-3", title: "coming soon", description: "a sixth dataset, TBD", disabled: true },
-];
+export const DEMO_DATASETS: DemoDataset[] = [pokemon, baseball, cars, colors, movies, stocks];
 
 export { parseUpload } from "./parseUpload";
 export { presetConfig } from "./presetConfig";

@@ -146,7 +146,7 @@ export function Tests() {
 
       <Scenario
         n={7}
-        title="Boolean → ordinal"
+        title="Boolean -> ordinal"
         note="A derived dualType boolean becomes a two-value ordinal axis (false / true), orderable and brushable like any other ordinal."
       >
         <NaiveParallel data={dualData} />
@@ -166,7 +166,7 @@ export function Tests() {
       <Scenario
         n={9}
         title="Colorize: follow vs locked"
-        note="By default row colors follow the selected axis. Each numerical axis sweeps between its own complementary bright color pair; an axis whose domain crosses zero diverges red (negative) → yellow (zero) → green (positive); temporal axes ramp blue (early) → red (late); ordinal axes use their value colors. Use the control's colorize dropdown to lock colors to one axis while selecting others."
+        note="By default row colors follow the selected axis. Each numerical axis sweeps between its own complementary bright color pair; an axis whose domain crosses zero diverges red (negative) -> yellow (zero) -> green (positive); temporal axes ramp blue (early) -> red (late); ordinal axes use their value colors. Use the control's colorize dropdown to lock colors to one axis while selecting others."
       >
         <NaiveParallel data={sample} />
       </Scenario>
@@ -276,7 +276,7 @@ export function Tests() {
       <Scenario
         n={15}
         title="Colorize: RGB color components"
-        note="Pick 'color components' in the colorize dropdown: the first three numerical axes become the R, G, and B channels, so each row's color encodes its placement on all three at once (low on everything → black, high on everything → white). Reorder the axes (↑/↓ or drag) to remap which axes drive which channel."
+        note="Pick 'color components' in the colorize dropdown: the first three numerical axes become the R, G, and B channels, so each row's color encodes its placement on all three at once (low on everything -> black, high on everything -> white). Reorder the axes (↑/↓ or drag) to remap which axes drive which channel."
       >
         <NaiveParallel data={rgbData} configuration={rgbConfig} />
       </Scenario>
@@ -284,7 +284,7 @@ export function Tests() {
       <Scenario
         n={16}
         title="Colorize: diverging at zero"
-        note="Colorizing is locked to delta (attack − defense), whose domain crosses zero: rows diverge red (most negative) → yellow (exactly zero) → green (most positive), with the yellow pivot anchored at value 0 — not the domain midpoint. An all-negative axis spans only the red→orange segment: yellow strictly means zero."
+        note="Colorizing is locked to delta (attack - defense), whose domain crosses zero: rows diverge red (most negative) -> yellow (exactly zero) -> green (most positive), with the yellow pivot anchored at value 0 — not the domain midpoint. An all-negative axis spans only the red->orange segment: yellow strictly means zero."
       >
         <NaiveParallel data={divergingData} configuration={divergingConfig} />
       </Scenario>

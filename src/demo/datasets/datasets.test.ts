@@ -3,19 +3,24 @@ import type { NumericalAxis, OrdinalAxis } from "../../naiveparallel";
 import { DEMO_DATASETS } from "./index";
 import { baseball } from "./baseball";
 import { cars } from "./cars";
+import { colors } from "./colors";
+import { movies } from "./movies";
 import { pokemon } from "./pokemon";
+import { stocks } from "./stocks";
 
 const axis = (config: { axes: any[] }, id: string) => config.axes.find((a) => a.id === id);
 
 describe("DEMO_DATASETS registry", () => {
-  it("offers six tiles: three live, three reserved", () => {
+  it("offers six live tiles", () => {
     expect(DEMO_DATASETS).toHaveLength(6);
     expect(DEMO_DATASETS.filter((d) => !d.disabled).map((d) => d.id)).toEqual([
       "pokemon",
       "baseball",
       "cars",
+      "xkcd-colors",
+      "movies",
+      "otc-stocks",
     ]);
-    expect(DEMO_DATASETS.filter((d) => d.disabled)).toHaveLength(3);
   });
 });
 
@@ -93,5 +98,86 @@ describe("cars preset", () => {
     expect((axis(config, "Origin") as OrdinalAxis).colors.Japan).toBe("#dc143c");
     expect(config.colorizeAxisId).toBe("Origin");
     expect(axis(config, "Name")?.hidden).toBe(true);
+  });
+});
+
+describe("xkcd colors preset", () => {
+  it("opens in components mode with r/g/b as the leading numericals", async () => {
+    const rows = await colors.load!();
+    expect(rows).toHaveLength(949);
+    const config = colors.makeConfig!(rows);
+
+    // r, g, b lead the visible order so components mode maps them to RGB
+    expect(
+      config.axes
+        .filter((a) => !a.hidden)
+        .slice(0, 3)
+        .map((a) => a.id)
+    ).toEqual(["r", "g", "b"]);
+    expect(config.colorizeMode).toBe("components");
+    expect(config.colorizeAxisId).toBeNull();
+    expect((axis(config, "r") as NumericalAxis).domain).toEqual([0, 255]);
+    expect((axis(config, "hue") as NumericalAxis).domain).toEqual([0, 360]);
+
+    // 949 distinct names exceed MAX_ORDINAL → default first-char mapping
+    const name = axis(config, "name") as OrdinalAxis;
+    expect(name.kind).toBe("ordinal");
+    expect(name.mapping).toBeDefined();
+    expect(name.renderable).toBe(true);
+    expect(axis(config, "hex")?.hidden).toBe(true);
+  });
+});
+
+describe("movies preset", () => {
+  it("diverges on profit and first-char-maps the big string columns", async () => {
+    const rows = await movies.load!();
+    expect(rows).toHaveLength(3201);
+    const config = movies.makeConfig!(rows);
+
+    // Profit crosses zero → the diverging ramp anchors at 0 when selected
+    const profit = axis(config, "Profit") as NumericalAxis;
+    expect(profit.domain[0]).toBeLessThan(0);
+    expect(profit.domain[1]).toBeGreaterThan(0);
+    expect(config.selectedAxisId).toBe("Profit");
+    expect(config.colorizeMode).toBe("follow");
+
+    // prepare script fixed the two-digit-year bug; years are plain numbers
+    const year = axis(config, "Year") as NumericalAxis;
+    expect(year.kind).toBe("numerical");
+    expect(year.domain[0]).toBeGreaterThanOrEqual(1900);
+    expect(year.domain[1]).toBeLessThanOrEqual(2012);
+
+    // tidy ordinals render directly; oversize ones get first-char mappings
+    expect((axis(config, "Major Genre") as OrdinalAxis).mapping).toBeUndefined();
+    for (const id of ["Distributor", "Director"]) {
+      const a = axis(config, id) as OrdinalAxis;
+      expect(a.kind).toBe("ordinal");
+      expect(a.mapping).toBeDefined();
+      expect(a.renderable).toBe(true);
+    }
+    expect(axis(config, "Title")?.hidden).toBe(true);
+  });
+});
+
+describe("otc stocks preset", () => {
+  it("clamps the skewed domains across 2000+ rows", async () => {
+    const rows = await stocks.load!();
+    expect(rows.length).toBeGreaterThan(2000);
+    const config = stocks.makeConfig!(rows);
+
+    // changePerc crosses zero and is clamped well inside the data extent
+    expect((axis(config, "changePerc") as NumericalAxis).domain).toEqual([-15, 15]);
+    expect(Math.min(...rows.map((r) => r.changePerc))).toBeLessThan(-15);
+    expect(config.selectedAxisId).toBe("changePerc");
+
+    // penny-stock prices span seven orders of magnitude; the axis does not
+    expect((axis(config, "close") as NumericalAxis).domain).toEqual([0, 50]);
+    expect(Math.max(...rows.map((r) => r.close))).toBeGreaterThan(50);
+    expect((axis(config, "volume") as NumericalAxis).domain).toEqual([0, 1_000_000]);
+
+    // thousands of tickers → first-char mapping keeps the axis renderable
+    const ticker = axis(config, "ticker") as OrdinalAxis;
+    expect(ticker.mapping).toBeDefined();
+    expect(ticker.renderable).toBe(true);
   });
 });
