@@ -68,6 +68,37 @@ describe("buildScale (numerical)", () => {
   });
 });
 
+describe("buildScale (numerical, vertical)", () => {
+  // vertical layout: the value axis runs horizontally, low-left / high-right,
+  // so the range is NOT reversed (unlike horizontal, which puts high at top)
+  const scale = buildScale(numAxis, [40, 440], "vertical");
+
+  it("maps high values to the end of the range (right), low to the start (left)", () => {
+    expect(scale.y(0)).toBe(40);
+    expect(scale.y(100)).toBe(440);
+    expect(scale.y(50)).toBe(240);
+  });
+
+  it("inverts pixels back to values (ascending)", () => {
+    expect(scale.invert(40)).toBe(0);
+    expect(scale.invert(440)).toBe(100);
+  });
+
+  it("clamps out-of-domain values to the axis ends", () => {
+    expect(scale.y(250)).toBe(440); // above domain max -> right end
+    expect(scale.y(-50)).toBe(40); // below domain min -> left end
+  });
+});
+
+describe("buildScale (temporal, vertical)", () => {
+  const scale = buildScale(temporalAxis, [40, 440], "vertical");
+
+  it("maps the earliest date to the start (left), latest to the end (right)", () => {
+    expect(scale.y(Date.UTC(2024, 0, 1))).toBe(40);
+    expect(scale.y(Date.UTC(2024, 0, 31))).toBe(440);
+  });
+});
+
 const temporalAxis: NumericalAxis = {
   id: "date",
   path: "date",

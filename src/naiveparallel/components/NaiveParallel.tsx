@@ -3,6 +3,7 @@ import { NaiveParallelProvider } from "../context/NaiveParallelProvider";
 import { deriveConfig } from "../data/deriveConfig";
 import type { DataObj, InferAxesOptions, NaiveParallelConfig } from "../types";
 import { ParallelChart } from "./ParallelChart";
+import type { Orientation } from "./chart/scales";
 import { ParallelControl } from "./ParallelControl";
 
 export interface NaiveParallelProps<T extends DataObj = DataObj> {
@@ -12,6 +13,14 @@ export interface NaiveParallelProps<T extends DataObj = DataObj> {
   configuration?: NaiveParallelConfig;
   /** Inference options applied when configuration is omitted. */
   inferOptions?: InferAxesOptions;
+  /**
+   * Chart layout direction, forwarded to the default ParallelChart (no effect
+   * when you supply your own children). "auto" (default) picks vertical on a
+   * portrait viewport, horizontal otherwise.
+   */
+  layout?: Orientation | "auto";
+  /** Pixel spacing between adjacent axes, forwarded to the default ParallelChart. */
+  axisSpacing?: number;
   /**
    * Compound children (ParallelControl, ParallelChart, ParallelColumn,
    * ParallelRow, or anything using useNaiveParallel). With no children the
@@ -31,7 +40,8 @@ export interface NaiveParallelProps<T extends DataObj = DataObj> {
  *   <NaiveParallel data={data}> <ParallelChart/> ... </NaiveParallel>
  */
 export function NaiveParallel<T extends DataObj = DataObj>(props: NaiveParallelProps<T>) {
-  const { data, configuration, inferOptions, children, className, style } = props;
+  const { data, configuration, inferOptions, layout, axisSpacing, children, className, style } =
+    props;
 
   const rows = useMemo(() => data.filter((row): row is T => row != null), [data]);
 
@@ -45,7 +55,7 @@ export function NaiveParallel<T extends DataObj = DataObj>(props: NaiveParallelP
       <NaiveParallelProvider data={rows} config={config}>
         {children ?? (
           <div className="np-default-ui">
-            <ParallelChart />
+            <ParallelChart layout={layout} axisSpacing={axisSpacing} />
             <ParallelControl />
           </div>
         )}

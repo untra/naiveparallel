@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
 import type { NumericFilter, OrdinalFilter } from "../types";
+import type { Orientation } from "./chart/scales";
 import { NaiveParallel } from "./NaiveParallel";
 import { ParallelChart } from "./ParallelChart";
 import { ParallelColumn } from "./ParallelColumn";
@@ -683,3 +684,104 @@ function ColorOfProbe({ row }: { row: Record<string, unknown> }) {
     </>
   );
 }
+
+describe("vertical layout brushing", () => {
+  // layout="vertical": margins {top:16,right:24,bottom:24,left:96}, container width 800.
+  // the value axis runs HORIZONTALLY over [96, 776], low-left/high-right (NOT reversed),
+  // so hp domain [45,130] maps 96->45 .. 776->130. brushing is driven by clientX.
+
+  it("commits a range filter driven by the x coordinate", () => {
+    const { container } = render(
+      <NaiveParallel data={data}>
+        <ParallelChart layout="vertical" />
+        <FilterProbe />
+      </NaiveParallel>
+    );
+    const track = container.querySelector('[data-testid="np-axis-hp"] .np-brush-track')!;
+    // invert(96)=45, invert(400)=83 -> keeps hp 45 and 78, drops 130
+    fireEvent.pointerDown(track, { clientX: 96, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientX: 400, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientX: 400, clientY: 0, pointerId: 1 });
+
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-83");
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+  });
+
+  it("draws the brush rect along x/width (not y/height)", () => {
+    const { container } = render(
+      <NaiveParallel data={data}>
+        <ParallelChart layout="vertical" />
+      </NaiveParallel>
+    );
+    const track = container.querySelector('[data-testid="np-axis-hp"] .np-brush-track')!;
+    fireEvent.pointerDown(track, { clientX: 96, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientX: 400, clientY: 0, pointerId: 1 });
+    const rect = screen.getByTestId("np-brush-hp");
+    expect(rect.getAttribute("x")).toBe("96");
+    expect(rect.getAttribute("width")).toBe("304");
+    expect(rect.getAttribute("height")).toBe("16"); // fixed cross-thickness
+  });
+});
+
+describe("layout=auto viewport detection", () => {
+  const original = { w: window.innerWidth, h: window.innerHeight };
+  const setViewport = (w: number, h: number) => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: w });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: h });
+  };
+  afterEach(() => setViewport(original.w, original.h));
+
+  it("resolves to vertical on a portrait viewport", () => {
+    setViewport(375, 640);
+    const { container } = render(
+      <NaiveParallel data={data}>
+        <ParallelChart layout="auto" />
+      </NaiveParallel>
+    );
+    expect(container.querySelector(".np-chart")).toHaveClass("np-layout-vertical");
+  });
+
+  it("resolves to horizontal on a landscape viewport", () => {
+    setViewport(1024, 768);
+    const { container } = render(
+      <NaiveParallel data={data}>
+        <ParallelChart layout="auto" />
+      </NaiveParallel>
+    );
+    expect(container.querySelector(".np-chart")).toHaveClass("np-layout-horizontal");
+  });
+});
+
+function LayoutToggle() {
+  const [layout, setLayout] = React.useState<Orientation>("horizontal");
+  return (
+    <>
+      <button onClick={() => setLayout((l) => (l === "horizontal" ? "vertical" : "horizontal"))}>
+        flip
+      </button>
+      <NaiveParallel data={data}>
+        <ParallelChart layout={layout} />
+        <FilterProbe />
+      </NaiveParallel>
+    </>
+  );
+}
+
+describe("toggling the layout prop", () => {
+  it("re-renders in the other orientation and brushing still works", () => {
+    const { container } = render(<LayoutToggle />);
+    expect(container.querySelector(".np-chart")).toHaveClass("np-layout-horizontal");
+
+    fireEvent.click(screen.getByText("flip"));
+    expect(container.querySelector(".np-chart")).toHaveClass("np-layout-vertical");
+
+    // brushing now reads the x coordinate (vertical value axis over [96, 776])
+    const track = container.querySelector('[data-testid="np-axis-hp"] .np-brush-track')!;
+    fireEvent.pointerDown(track, { clientX: 96, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientX: 400, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(track, { clientX: 400, clientY: 0, pointerId: 1 });
+
+    expect(screen.getByTestId("probe-hp").textContent).toBe("45-83");
+    expect(screen.getByTestId("probe-count").textContent).toBe("2");
+  });
+});

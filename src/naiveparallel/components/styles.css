@@ -45,6 +45,13 @@
   opacity: 0.75;
 }
 
+/* vertical / mobile layout: axes are horizontal lines stacked top-to-bottom.
+   The chart height is derived from the axis count, so the container scrolls. */
+
+.np-layout-vertical .np-axis-tick-label {
+  text-anchor: middle;
+}
+
 /* brushing */
 
 .np-brush {

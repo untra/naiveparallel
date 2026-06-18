@@ -15,7 +15,7 @@ export type { ChartLayout, ChartMargins } from "./chart/ChartLayoutContext";
 export { HoverCanvas } from "./chart/HoverCanvas";
 export { LinesCanvas } from "./chart/LinesCanvas";
 export { buildScale } from "./chart/scales";
-export type { AxisScale } from "./chart/scales";
+export type { AxisScale, Orientation } from "./chart/scales";
 export { StatMarkers } from "./chart/StatMarkers";
 export { useAxisDrag } from "./chart/useAxisDrag";
 export type { AxisDragState } from "./chart/useAxisDrag";

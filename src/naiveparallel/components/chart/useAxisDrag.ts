@@ -4,8 +4,16 @@ import type { ParallelAxis } from "../../types";
 import { useChartLayout } from "./ChartLayoutContext";
 
 export interface AxisDragState {
-  /** The in-flight horizontal offset of the dragged axis, in px. */
+  /**
+   * The in-flight offset of the dragged axis along the axis-distribution
+   * direction, in px (apply to x horizontally, to y vertically — see
+   * {@link AxisDragState.dx}/{@link AxisDragState.dy}).
+   */
+  offset: number;
+  /** In-flight x offset (the offset horizontally, 0 vertically). */
   dx: number;
+  /** In-flight y offset (the offset vertically, 0 horizontally). */
+  dy: number;
   dragging: boolean;
   handlers: {
     onPointerDown: (e: React.PointerEvent<SVGElement>) => void;
@@ -25,36 +33,48 @@ const CLICK_TOLERANCE = 5;
 export function useAxisDrag(axis: ParallelAxis): AxisDragState {
   const { config, reorderAxes } = useNaiveParallel();
   const layout = useChartLayout();
-  const [dx, setDx] = useState(0);
-  const startX = useRef<number | null>(null);
+  const [offset, setOffset] = useState(0);
+  const start = useRef<number | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const onPointerDown = useCallback((e: React.PointerEvent<SVGElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    startX.current = e.clientX;
-  }, []);
+  // axes are dragged along the axis-distribution direction: x horizontal, y vertical
+  const axisClient = (e: React.PointerEvent<SVGElement>) =>
+    layout.orientation === "vertical" ? e.clientY : e.clientX;
 
-  const onPointerMove = useCallback((e: React.PointerEvent<SVGElement>) => {
-    if (startX.current === null) return;
-    const offset = e.clientX - startX.current;
-    if (Math.abs(offset) >= CLICK_TOLERANCE) setDragging(true);
-    setDx(offset);
-  }, []);
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<SVGElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      start.current = axisClient(e);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layout.orientation]
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<SVGElement>) => {
+      if (start.current === null) return;
+      const delta = axisClient(e) - start.current;
+      if (Math.abs(delta) >= CLICK_TOLERANCE) setDragging(true);
+      setOffset(delta);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layout.orientation]
+  );
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent<SVGElement>) => {
-      if (startX.current === null) return;
-      const offset = e.clientX - startX.current;
-      startX.current = null;
-      setDx(0);
+      if (start.current === null) return;
+      const delta = axisClient(e) - start.current;
+      start.current = null;
+      setOffset(0);
       setDragging(false);
-      if (Math.abs(offset) < CLICK_TOLERANCE) return; // a click — let onClick handle it
+      if (Math.abs(delta) < CLICK_TOLERANCE) return; // a click — let onClick handle it
 
-      // order the visible axes by their (dragged) x positions...
-      const finalX = layout.xOf(axis.id) + offset;
+      // order the visible axes by their (dragged) axis-distribution positions...
+      const finalPos = layout.axisPos(axis.id) + delta;
       const visibleOrder = [...layout.visibleAxes]
-        .map((a) => ({ id: a.id, x: a.id === axis.id ? finalX : layout.xOf(a.id) }))
-        .sort((a, b) => a.x - b.x)
+        .map((a) => ({ id: a.id, pos: a.id === axis.id ? finalPos : layout.axisPos(a.id) }))
+        .sort((a, b) => a.pos - b.pos)
         .map((a) => a.id);
 
       // ...then weave the non-visible axes back in at their original slots
@@ -65,8 +85,16 @@ export function useAxisDrag(axis: ParallelAxis): AxisDragState {
       );
       reorderAxes(orderedIds);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [axis.id, config.axes, layout, reorderAxes]
   );
 
-  return { dx, dragging, handlers: { onPointerDown, onPointerMove, onPointerUp } };
+  const vertical = layout.orientation === "vertical";
+  return {
+    offset,
+    dx: vertical ? 0 : offset,
+    dy: vertical ? offset : 0,
+    dragging,
+    handlers: { onPointerDown, onPointerMove, onPointerUp },
+  };
 }

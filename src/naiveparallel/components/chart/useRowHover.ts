@@ -7,31 +7,36 @@ import { useChartLayout, type ChartLayout } from "./ChartLayoutContext";
 /** Max pointer distance (px) from a polyline to count as hovering it. */
 const HOVER_THRESHOLD = 6;
 
-/** A row's interpolated y at pixel x, or null across missing values. */
-function rowYAt(row: DataObj, cx: number, layout: ChartLayout): number | null {
+/**
+ * A row's interpolated value-direction coordinate at a given axis-distribution
+ * coordinate, or null across missing values. Both inputs/outputs are in the
+ * layout's coordinate frame (y horizontal, x vertical) — caller compares the
+ * result to the pointer's value-direction coordinate.
+ */
+function rowValueAt(row: DataObj, axisAt: number, layout: ChartLayout): number | null {
   const axes = layout.visibleAxes;
   if (axes.length === 0) return null;
 
-  // find the axes flanking cx
+  // find the axes flanking the pointer along the axis-distribution direction
   let left = axes[0];
   let right = axes[axes.length - 1];
   for (let i = 0; i < axes.length - 1; i++) {
-    if (layout.xOf(axes[i].id) <= cx && cx <= layout.xOf(axes[i + 1].id)) {
+    if (layout.axisPos(axes[i].id) <= axisAt && axisAt <= layout.axisPos(axes[i + 1].id)) {
       left = axes[i];
       right = axes[i + 1];
       break;
     }
   }
 
-  const yLeft = layout.scaleOf(left.id).y(axisValue(left, row));
-  const yRight = layout.scaleOf(right.id).y(axisValue(right, row));
-  if (yLeft === null || yRight === null) return null;
+  const vLeft = layout.scaleOf(left.id).y(axisValue(left, row));
+  const vRight = layout.scaleOf(right.id).y(axisValue(right, row));
+  if (vLeft === null || vRight === null) return null;
 
-  const xLeft = layout.xOf(left.id);
-  const xRight = layout.xOf(right.id);
-  if (xRight === xLeft) return yLeft;
-  const t = Math.max(0, Math.min(1, (cx - xLeft) / (xRight - xLeft)));
-  return yLeft + t * (yRight - yLeft);
+  const posLeft = layout.axisPos(left.id);
+  const posRight = layout.axisPos(right.id);
+  if (posRight === posLeft) return vLeft;
+  const t = Math.max(0, Math.min(1, (axisAt - posLeft) / (posRight - posLeft)));
+  return vLeft + t * (vRight - vLeft);
 }
 
 /**
@@ -56,17 +61,19 @@ export function useRowHover() {
   const onPointerMove = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
+      const localX = e.clientX - rect.left;
+      const localY = e.clientY - rect.top;
+      const axisAt = layout.axisCoord(localX, localY);
+      const valueAt = layout.valueCoord(localX, localY);
       if (frame.current !== null) return; // one detection per frame
       frame.current = requestAnimationFrame(() => {
         frame.current = null;
         let best: DataObj | null = null;
         let bestDistance = HOVER_THRESHOLD;
         for (const row of filteredData) {
-          const y = rowYAt(row, cx, layout);
-          if (y === null) continue;
-          const distance = Math.abs(y - cy);
+          const v = rowValueAt(row, axisAt, layout);
+          if (v === null) continue;
+          const distance = Math.abs(v - valueAt);
           if (distance < bestDistance) {
             bestDistance = distance;
             best = row;

@@ -86,13 +86,15 @@ export function useBrush(axis: ParallelAxis): BrushState {
     []
   );
 
-  const trackTop = layout.margins.top;
-  const trackBottom = layout.height - layout.margins.bottom;
+  const [trackTop, trackBottom] = layout.valueExtent();
   const scale = layout.scaleOf(axis.id);
 
+  // the pointer's position along the value axis (y horizontal, x vertical),
+  // clamped to the track span — the brush is purely value-direction driven
   const localY = (e: React.PointerEvent<SVGElement>) => {
     const rect = (e.currentTarget.ownerSVGElement ?? e.currentTarget).getBoundingClientRect();
-    return Math.max(trackTop, Math.min(trackBottom, e.clientY - rect.top));
+    const v = layout.valueCoord(e.clientX - rect.left, e.clientY - rect.top);
+    return Math.max(trackTop, Math.min(trackBottom, v));
   };
 
   /** The snapped pixel band covering the value index run [first, last]. */
@@ -125,11 +127,12 @@ export function useBrush(axis: ParallelAxis): BrushState {
       const run = runOf(axis, pixelExtent);
       return run ? ordinalFilterOf(axis, run[0], run[1]) : undefined;
     }
-    // pixel top is the high value (numerical scales render high at top)
-    const hi = scale.invert(pixelExtent[0]);
-    const lo = scale.invert(pixelExtent[1]);
-    if (lo === null || hi === null) return undefined;
-    return { kind: "numeric", min: Math.min(lo, hi), max: Math.max(lo, hi) };
+    // the extent's two value-direction pixels invert to the domain endpoints
+    // (which end is the higher value depends on orientation, so order them)
+    const a = scale.invert(pixelExtent[0]);
+    const b = scale.invert(pixelExtent[1]);
+    if (a === null || b === null) return undefined;
+    return { kind: "numeric", min: Math.min(a, b), max: Math.max(a, b) };
   };
 
   /** rAF-throttled live filter application (port of the reference scheduleUpdate). */
@@ -156,21 +159,26 @@ export function useBrush(axis: ParallelAxis): BrushState {
 
       const committed = filters[axis.id];
       if (axis.kind === "numerical" && committed?.kind === "numeric") {
-        const top = scale.y(committed.max);
-        const bottom = scale.y(committed.min);
-        if (top !== null && bottom !== null && y >= top && y <= bottom) {
-          // grabbed the existing range: slide it, size preserved
-          gesture.current = {
-            mode: "move",
-            startY: y,
-            grabOffset: y - top,
-            size: bottom - top,
-            moved: false,
-            startIndex: 0,
-            count: 0,
-          };
-          setExtent([top, bottom]);
-          return;
+        // the value-pixels of min/max; which is smaller depends on orientation
+        const pa = scale.y(committed.max);
+        const pb = scale.y(committed.min);
+        if (pa !== null && pb !== null) {
+          const lo = Math.min(pa, pb);
+          const hi = Math.max(pa, pb);
+          if (y >= lo && y <= hi) {
+            // grabbed the existing range: slide it, size preserved
+            gesture.current = {
+              mode: "move",
+              startY: y,
+              grabOffset: y - lo,
+              size: hi - lo,
+              moved: false,
+              startIndex: 0,
+              count: 0,
+            };
+            setExtent([lo, hi]);
+            return;
+          }
         }
       }
       if (axis.kind === "ordinal" && committed?.kind === "ordinal") {
