@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { collectValues } from "../data/accessors";
-import { buildColorizer, buildComponentColorizer, resolveColorizeAxis } from "../data/colorize";
+import {
+  buildColorizer,
+  buildComponentColorizer,
+  buildDistinguishColorizer,
+  resolveColorizeAxis,
+} from "../data/colorize";
 import { applyFilters } from "../data/filter";
 import { inferAxis } from "../data/inferAxes";
 import { columnStats } from "../data/stats";
@@ -66,13 +71,17 @@ export function NaiveParallelProvider<T extends DataObj>(props: NaiveParallelPro
   const colorizeAxis = useMemo(() => resolveColorizeAxis(state.config), [state.config]);
 
   // depends on the whole config (not just colorizeAxis): components mode
-  // derives its channels from the axis order, so reorders must rebuild
+  // derives its channels from the axis order, so reorders must rebuild.
+  // distinguish derives per-row colors from the full (unfiltered) dataset, so
+  // a row's color stays stable as filters change.
   const colorOf = useMemo(
     () =>
       state.config.colorizeMode === "components"
         ? buildComponentColorizer(state.config)
-        : buildColorizer(colorizeAxis),
-    [state.config, colorizeAxis]
+        : state.config.colorizeMode === "distinguish"
+          ? buildDistinguishColorizer(colorizeAxis, data)
+          : buildColorizer(colorizeAxis),
+    [state.config, colorizeAxis, data]
   );
 
   const setFilter = useCallback(

@@ -99,6 +99,32 @@ describe("useNaiveParallel", () => {
     });
     expect(result.current.colorOf(data[1])).toBe("rgb(99, 128, 0)");
   });
+
+  it("distinguishes every row by the selected axis, stable across a filter", () => {
+    const { result } = renderHook(() => useNaiveParallel(), { wrapper });
+    act(() => {
+      result.current.setColorize(null, "distinguish");
+    });
+    // no lock -> drives off the selected axis (the identity "id", 1/2/3)
+    expect(result.current.colorizeAxis?.id).toBe("id");
+    // each row gets a distinct HSV-derived hex (hue from rank, etc.)
+    const colors = data.map((row) => result.current.colorOf(row));
+    for (const c of colors) expect(c).toMatch(/^#[0-9A-F]{6}$/);
+    expect(new Set(colors).size).toBe(3);
+    // colors computed over the full dataset stay stable when a filter narrows it
+    act(() => {
+      result.current.setFilter("id", { kind: "numeric", min: 2, max: 3 });
+    });
+    expect(result.current.colorOf(data[2])).toBe(colors[2]);
+
+    // no lock truly follows the selection: switch to hp and colors recompute
+    act(() => {
+      result.current.setColorize(null, "follow"); // clear, then select + redistinguish
+      result.current.selectAxis("hp");
+      result.current.setColorize(null, "distinguish");
+    });
+    expect(result.current.colorizeAxis?.id).toBe("hp");
+  });
 });
 
 describe("interaction context", () => {

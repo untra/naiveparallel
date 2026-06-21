@@ -4,13 +4,13 @@ import type { DemoDataset } from "./types";
 
 /**
  * The classic vega-datasets cars table: 406 cars, 1970–1982. Exercises null
- * values (8 missing MPG), date-string → year ordinal mapping, and a numeric
+ * values (8 missing MPG), date-string -> year ordinal mapping, and a numeric
  * column (Cylinders) recast as an ordinal.
  */
 export const cars: DemoDataset = {
   id: "cars",
   title: "Cars",
-  description: "406 cars (vega-datasets) × mpg, power, weight, origin, 1970–82",
+  description: "406 cars (vega-datasets) x mpg, power, weight, origin, 1970-82",
   load: () => import("../data/cars.json").then((m) => m.default as DataObj[]),
   makeConfig: (rows) =>
     presetConfig(rows, {

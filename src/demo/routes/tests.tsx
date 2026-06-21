@@ -26,9 +26,46 @@ function Scenario(props: { n: number; title: string; children: React.ReactNode; 
   );
 }
 
+/** A button-driven layout toggle, demonstrating horizontal/vertical/auto. */
+function LayoutToggle({ data }: { data: Record<string, unknown>[] }) {
+  const [layout, setLayout] = React.useState<"auto" | "horizontal" | "vertical">("auto");
+  const options = ["auto", "horizontal", "vertical"] as const;
+  return (
+    <>
+      <div role="group" aria-label="layout" style={{ display: "flex", gap: "0.5rem", margin: "0.5rem 0" }}>
+        {options.map((o) => (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={layout === o}
+            onClick={() => setLayout(o)}
+            style={{ fontWeight: layout === o ? 700 : 400, cursor: "pointer" }}
+          >
+            {o}
+          </button>
+        ))}
+      </div>
+      <NaiveParallel data={data} layout={layout} />
+    </>
+  );
+}
+
 export function Tests() {
   const dualData = useMemo(
     () => sample.map((m) => ({ id: m.id, hp: m.stats.hp, speed: m.stats.speed, dualType: m.type1 !== m.type2 })),
+    []
+  );
+
+  const layoutData = useMemo(
+    () =>
+      sample.map((m) => ({
+        id: m.id,
+        hp: m.stats.hp,
+        attack: m.stats.attack,
+        defense: m.stats.defense,
+        speed: m.stats.speed,
+        type1: m.type1,
+      })),
     []
   );
 
@@ -68,6 +105,24 @@ export function Tests() {
     const derived = deriveConfig(divergingData);
     return { ...derived, colorizeAxisId: "delta", colorizeMode: "locked" as const };
   }, [divergingData]);
+
+  const statsConfig = useMemo(() => {
+    const derived = deriveConfig(dualData);
+    return {
+      ...derived,
+      selectedAxisId: "hp",
+      // chart-level: recolor max/min, hide mean and the ±1σ lines, keep median/IQR default
+      statMarkers: {
+        enabled: true,
+        colors: { max: "#e0245e", min: "#1d9bf0", mean: false as const, stddev: false as const },
+      },
+    };
+  }, [dualData]);
+
+  const distinguishConfig = useMemo(
+    () => ({ ...deriveConfig(dualData), colorizeMode: "distinguish" as const }),
+    [dualData]
+  );
 
   return (
     <main style={{ padding: "1rem" }}>
@@ -287,6 +342,38 @@ export function Tests() {
         note="Colorizing is locked to delta (attack - defense), whose domain crosses zero: rows diverge red (most negative) -> yellow (exactly zero) -> green (most positive), with the yellow pivot anchored at value 0 — not the domain midpoint. An all-negative axis spans only the red->orange segment: yellow strictly means zero."
       >
         <NaiveParallel data={divergingData} configuration={divergingConfig} />
+      </Scenario>
+
+      <Scenario
+        n={17}
+        title="Vertical / mobile layout"
+        note="Toggle the layout direction. Horizontal draws axes as vertical columns (desktop); vertical stacks them as horizontal lines top-to-bottom with rows running left-to-right (low-left, high-right), deriving its height from the axis count so it scrolls on mobile. 'auto' picks vertical on a portrait viewport — narrow your window or rotate a device to see it switch. Brushing, hover, reorder and stat markers all work in both orientations."
+      >
+        <LayoutToggle data={layoutData} />
+      </Scenario>
+
+      <Scenario
+        n={18}
+        title="Ambient interaction hints (opt-in)"
+        note="Pass hints to surface the two highest-value gestures. After a brief idle the active axis plays a translucent ghost-brush demonstrating drag-to-filter (it stops for good once you brush). Brushing reveals a live kept/total counter whose numerator swells then eases on each change. Hovering a line shows a readout tooltip naming the row and its per-axis values (horizontal layout only). Off by default; all three respect prefers-reduced-motion."
+      >
+        <NaiveParallel data={layoutData} hints />
+      </Scenario>
+
+      <Scenario
+        n={19}
+        title="Stat markers: customizable & optional (chart-level)"
+        note="The selected axis' stat markers are a chart-level setting, not an axis one. Here the hp axis recolors its max (custom red) and min (custom blue) and hides mean and the ±1σ lines entirely, leaving the green median and yellow IQR in their default shades. Set statMarkers.enabled to false to drop them all — for viewers who don't want the statistical detail. Each stat key (max/min/median/mean/iqr/stddev; mode/median/dispersion for ordinals) takes a custom color or false to hide."
+      >
+        <NaiveParallel data={dualData} configuration={statsConfig} />
+      </Scenario>
+
+      <Scenario
+        n={20}
+        title="Colorize: distinguish (unique per-row debug color)"
+        note="The 'distinguish' colorize mode gives every row a unique, stable color from one column — the selected axis (here the identity id), or a colorizeLock'd one. Three decorrelated HSV channels read as distribution diagnostics: Hue = the value's rank, swept red→magenta so adjacent rows still differ; Saturation = signed z-score from the mean (kept high so rows stay vivid, above-mean a touch more saturated); Brightness = folded deviation from the median scaled by IQR (median rows dimmer, outliers brightest). Saturation stays high so no row looks washed-out/deselected. Colors are computed over the full dataset, so a row keeps its color as you brush. Switch the control's colorize dropdown to 'distinguish rows' on any dataset to try it."
+      >
+        <NaiveParallel data={dualData} configuration={distinguishConfig} />
       </Scenario>
     </main>
   );

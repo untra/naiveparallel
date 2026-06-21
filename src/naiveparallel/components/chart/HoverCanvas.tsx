@@ -8,14 +8,13 @@ function drawRow(ctx: CanvasRenderingContext2D, row: DataObj, layout: ChartLayou
   ctx.beginPath();
   let penDown = false;
   for (const axis of layout.visibleAxes) {
-    const y = layout.scaleOf(axis.id).y(axisValue(axis, row));
-    if (y === null) {
+    const p = layout.project(axis.id, axisValue(axis, row));
+    if (p === null) {
       penDown = false;
       continue;
     }
-    const x = layout.xOf(axis.id);
-    if (penDown) ctx.lineTo(x, y);
-    else ctx.moveTo(x, y);
+    if (penDown) ctx.lineTo(p.x, p.y);
+    else ctx.moveTo(p.x, p.y);
     penDown = true;
   }
   ctx.stroke();

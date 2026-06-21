@@ -1,5 +1,9 @@
 import { scaleLinear, scalePoint, scaleUtc } from "d3-scale";
 import type { ParallelAxis } from "../../types";
+import { isNumericAxis } from "../../types";
+
+/** Which way the chart is laid out. See ChartLayout for the geometry. */
+export type Orientation = "horizontal" | "vertical";
 
 /**
  * The one scale both render layers share. LinesCanvas, AxisSvg and
@@ -7,7 +11,11 @@ import type { ParallelAxis } from "../../types";
  * canvas polylines and SVG markers align on the same pixels.
  */
 export interface AxisScale {
-  /** Pixel y for an axis value (numbers for numerical, strings for ordinal); null when unmappable. */
+  /**
+   * Position of a value along the value axis, in pixels; null when unmappable.
+   * This is a y-pixel in horizontal layout and an x-pixel in vertical layout —
+   * the layout's project() assigns it to the right screen coordinate.
+   */
   y(value: number | string | null): number | null;
   /** Tick marks to render along the axis. */
   ticks(count?: number): Array<{ value: string; y: number }>;
@@ -19,14 +27,30 @@ export interface AxisScale {
   step(): number | null;
 }
 
-/** Builds the scale mapping an axis' domain onto a vertical pixel range (top, bottom). */
-export function buildScale(axis: ParallelAxis, range: [number, number]): AxisScale {
-  if (axis.kind === "numerical") {
-    if (axis.temporal) {
+/**
+ * Builds the scale mapping an axis' domain onto the value-direction pixel range.
+ *
+ * In **horizontal** layout the value axis runs vertically and numerical/temporal
+ * domains render high-at-top, so the range is reversed (`[max@top, min@bottom]`).
+ * In **vertical** layout the value axis runs horizontally low-left/high-right,
+ * so the range is used as-is (`[min@left, max@right]`). Ordinal spacing is the
+ * same ascending point scale either way.
+ */
+export function buildScale(
+  axis: ParallelAxis,
+  range: [number, number],
+  orientation: Orientation = "horizontal"
+): AxisScale {
+  // numerical/temporal: horizontal puts high at the top (reversed range);
+  // vertical puts high at the right (natural range)
+  const valueRange: [number, number] =
+    orientation === "vertical" ? [range[0], range[1]] : [range[1], range[0]];
+  if (isNumericAxis(axis)) {
+    if (axis.kind === "temporal") {
       // temporal: same epoch-ms positioning as linear, but a UTC time scale
       // gives date-boundary ticks and date-formatted labels. clamp(true) is
       // mandatory — time scales default to clamping disabled.
-      const scale = scaleUtc().domain(axis.domain).range([range[1], range[0]]).clamp(true);
+      const scale = scaleUtc().domain(axis.domain).range(valueRange).clamp(true);
       return {
         y(value) {
           if (typeof value !== "number" || !Number.isFinite(value)) return null;
@@ -47,10 +71,9 @@ export function buildScale(axis: ParallelAxis, range: [number, number]): AxisSca
         },
       };
     }
-    // high values at the top: domain [min, max] -> range [bottom, top].
     // Clamped: a configured domain may be narrower than the data extent, and
     // out-of-domain values must pin to the axis ends, not draw outside the track.
-    const scale = scaleLinear().domain(axis.domain).range([range[1], range[0]]).clamp(true);
+    const scale = scaleLinear().domain(axis.domain).range(valueRange).clamp(true);
     return {
       y(value) {
         if (typeof value !== "number" || !Number.isFinite(value)) return null;

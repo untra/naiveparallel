@@ -42,6 +42,21 @@ class ResizeObserverStub {
 }
 (globalThis as any).ResizeObserver = ResizeObserverStub;
 
+// jsdom has no matchMedia; the hint overlays query prefers-reduced-motion.
+// Report "not reduced" so the animated hint paths are exercised in tests.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
 // jsdom doesn't implement pointer capture, which the brush/drag hooks use
 Element.prototype.setPointerCapture = Element.prototype.setPointerCapture ?? (() => undefined);
 Element.prototype.releasePointerCapture =

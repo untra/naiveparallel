@@ -1,4 +1,5 @@
 import type { DataObj, InferAxesOptions, NaiveParallelConfig } from "../types";
+import { isNumericAxis } from "../types";
 import { inferAxes } from "./inferAxes";
 
 /**
@@ -13,7 +14,7 @@ export function deriveConfig(
   options: InferAxesOptions = {}
 ): NaiveParallelConfig {
   const axes = inferAxes(data, options);
-  const identity = axes[0]?.kind === "numerical" ? axes[0] : null;
+  const identity = axes[0] && isNumericAxis(axes[0]) ? axes[0] : null;
   return {
     axes,
     selectedAxisId: identity?.id ?? null,

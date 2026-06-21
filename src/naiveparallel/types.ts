@@ -14,7 +14,8 @@ export interface DataObj {
 /** A dot-separated path into a row object, e.g. `"stats.hp"` or `"name.en"`. */
 export type Path = string;
 
-export type AxisKind = "numerical" | "ordinal";
+/** Force a kind. `"numerical"` makes a NumericalAxis coercing values to numbers. `"temporal"` makes a temporal NumericalAxis (epoch-ms domain). `"ordinal"` is a specific unordered category. */
+export type AxisKind = "numerical" | "ordinal" | "temporal";
 
 /** Identifies which date pattern a temporal axis was parsed from. */
 export type TemporalPatternId =
@@ -26,7 +27,7 @@ export type TemporalPatternId =
   | "d-mon-y"; // 15 Jan 2024
 
 /**
- * Present on a NumericalAxis when its values are dates. The axis' domain is
+ * Carried by a TemporalAxis: its values are dates and its domain is
  * epoch-milliseconds; raw string values parse via `parseTemporal(pattern, raw)`.
  * `source` records whether the underlying column was strings (parsed) or
  * numbers (treated as epoch-ms directly, via an override).
@@ -56,8 +57,18 @@ export interface NumericalAxis extends AxisBase {
   allIntegers: boolean;
   /** True when every observed value is >= 0. */
   allPositive: boolean;
-  /** Present when this numerical axis represents dates (domain is epoch-ms). */
-  temporal?: TemporalMarker;
+}
+
+/**
+ * An axis whose values are dates: structurally a NumericalAxis (epoch-ms
+ * domain, brushable/filterable as a range, numeric stats) tagged with its own
+ * `kind` and carrying the required temporal marker, so scales/formatting render
+ * it as dates. All numeric filter/brush/stats/colorize paths treat it like a
+ * numerical axis via the `isNumericAxis` guard.
+ */
+export interface TemporalAxis extends Omit<NumericalAxis, "kind"> {
+  kind: "temporal";
+  temporal: TemporalMarker;
 }
 
 /**
@@ -85,7 +96,18 @@ export interface OrdinalAxis extends AxisBase {
   renderable: boolean;
 }
 
-export type ParallelAxis = NumericalAxis | OrdinalAxis;
+export type ParallelAxis = NumericalAxis | OrdinalAxis | TemporalAxis;
+
+/** Axes with a numeric (range-brushable) domain: numerical or temporal. */
+export type NumericAxis = NumericalAxis | TemporalAxis;
+
+/**
+ * True for numeric-like axes (numerical or temporal) — the ones with a numeric
+ * domain that brush to a range, filter numerically, and report numerical stats.
+ */
+export function isNumericAxis(axis: ParallelAxis): axis is NumericAxis {
+  return axis.kind === "numerical" || axis.kind === "temporal";
+}
 
 /** An ordinal axis with more distinct values than this cannot render. */
 export const MAX_ORDINAL = 64;
@@ -95,8 +117,11 @@ export const MAX_ORDINAL = 64;
  * specific axis from the controls, or can map the first three visible
  * numerical axes onto the R, G, and B channels ("components") so each row's
  * color encodes three dimensions at once — reorder the axes to remap them.
+ * "distinguish" instead gives every row a unique, stable color derived from a
+ * single column's value and stats (the locked axis, else the selected axis) —
+ * a debugging colorizer that makes each row individually identifiable.
  */
-export type ColorizeMode = "follow" | "locked" | "components";
+export type ColorizeMode = "follow" | "locked" | "components" | "distinguish";
 
 /**
  * The configuration NaiveParallel accepts (and derives when not provided):
@@ -110,12 +135,17 @@ export interface NaiveParallelConfig {
   /** The axis colorizing is locked to (only meaningful when colorizeMode is "locked"). */
   colorizeAxisId: string | null;
   colorizeMode: ColorizeMode;
+  /**
+   * Chart-level stat-marker visibility/colors for the selected axis
+   * (default: all shown in STAT_COLORS).
+   */
+  statMarkers?: StatMarkersConfig;
 }
 
 /** Per-path overrides applied during axis inference. */
 export interface AxisOverride {
-  /** Force a kind. `"temporal"` makes a temporal NumericalAxis (epoch-ms domain). */
-  kind?: AxisKind | "temporal";
+  /** Force a kind. */
+  kind?: AxisKind;
   label?: string;
   hidden?: boolean;
   /** String value-space reducer (ordinal axes). */
@@ -218,6 +248,34 @@ export const STAT_COLORS = {
   iqr: "yellow",
   stddev: "magenta",
 } as const;
+
+/**
+ * Stat marker keys. Numerical (and temporal) axes use
+ * max/min/median/mean/iqr/stddev; ordinal axes use mode/median/dispersion.
+ */
+export type StatKey =
+  | "max"
+  | "min"
+  | "median"
+  | "mean"
+  | "mode"
+  | "iqr"
+  | "stddev"
+  | "dispersion";
+
+/**
+ * Chart-level control of the selected-axis stat markers. Omitted entirely =
+ * every marker shown in its conventional STAT_COLORS (the default). `enabled:
+ * false` hides all markers. `colors[key]` recolors one stat; `colors[key] ===
+ * false` hides just that stat; an omitted key keeps its default color. The
+ * axis kind decides which keys apply.
+ */
+export interface StatMarkersConfig {
+  /** Master toggle; defaults to true. */
+  enabled?: boolean;
+  /** Per-stat override: a color string, or false to hide that stat. */
+  colors?: Partial<Record<StatKey, string | false>>;
+}
 
 // ---------------------------------------------------------------------------
 // context
