@@ -9,6 +9,7 @@ import type { DemoDataset } from "./types";
  */
 export const cars: DemoDataset = {
   id: "cars",
+  sourceFile: "cars.tsx",
   title: "Cars",
   description: "406 cars (vega-datasets) x mpg, power, weight, origin, 1970-82",
   load: () => import("../data/cars.json").then((m) => m.default as DataObj[]),

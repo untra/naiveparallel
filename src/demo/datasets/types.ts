@@ -7,6 +7,8 @@ export interface DemoDataset {
   title: string;
   /** One-liner shown in the selector tile. */
   description: string;
+  /** Basename of this dataset's source file under src/demo/datasets/, for the GitHub source link. */
+  sourceFile: string;
   /** True for the reserved "coming soon" slots. */
   disabled?: boolean;
   /** Lazy-loads the rows (vite code-splits the JSON chunk). */

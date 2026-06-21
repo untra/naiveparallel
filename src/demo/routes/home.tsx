@@ -21,6 +21,9 @@ interface LoadedDataset {
   config: NaiveParallelConfig | undefined;
 }
 
+const GITHUB_DATASETS_BASE =
+  "https://github.com/untra/naiveparallel/blob/main/src/demo/datasets/";
+
 const tileStyle = (active: boolean, disabled: boolean): React.CSSProperties => ({
   display: "block",
   flex: "1 1 130px",
@@ -137,9 +140,22 @@ export function Home() {
 
       {loaded && (
         <section aria-label={loaded.title}>
-          <h2 style={{ margin: "0.5rem 0" }}>
+          <h2 style={{ margin: "0.5rem 0 0" }}>
             {loaded.title} <small>({loaded.rows.length} rows)</small>
           </h2>
+          {loaded.dataset && (
+            <p style={{ margin: "0 0 0.5rem", fontSize: 13 }}>
+              configured in{" "}
+              <a
+                href={`${GITHUB_DATASETS_BASE}${loaded.dataset.sourceFile}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <code>src/demo/datasets/{loaded.dataset.sourceFile}</code> ↗
+              </a>{" "}
+              — the full component configuration for this dataset
+            </p>
+          )}
           <NaiveParallel key={loaded.key} data={loaded.rows} configuration={loaded.config}>
             <ParallelChart
               hints={loaded.dataset?.hints}

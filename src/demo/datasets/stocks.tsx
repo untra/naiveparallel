@@ -12,6 +12,7 @@ import type { DemoDataset } from "./types";
  */
 export const stocks: DemoDataset = {
   id: "otc-stocks",
+  sourceFile: "stocks.tsx",
   title: "OTC stocks 6/10/2026",
   description: "3,000+ OTC tickers (Massive API) x one day of price, volume, and OLHC change",
   load: () => import("../data/otcstocks.json").then((m) => m.default as DataObj[]),

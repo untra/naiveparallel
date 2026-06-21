@@ -8,6 +8,7 @@ import type { DemoDataset } from "./types";
  */
 export const baseball: DemoDataset = {
   id: "baseball",
+  sourceFile: "baseball.tsx",
   title: "MLB batting 2012",
   description: "453 batters (AB ≥ 100) × 14 counting stats, team and league",
   load: () => import("../data/batting2012.json").then((m) => m.default as DataObj[]),

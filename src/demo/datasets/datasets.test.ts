@@ -23,6 +23,12 @@ describe("DEMO_DATASETS registry", () => {
       "otc-stocks",
     ]);
   });
+
+  it("declares a .tsx source file for every dataset (drives the GitHub config link)", () => {
+    for (const dataset of DEMO_DATASETS) {
+      expect(dataset.sourceFile, dataset.id).toMatch(/\.tsx$/);
+    }
+  });
 });
 
 describe("pokemon preset", () => {

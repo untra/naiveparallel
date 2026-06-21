@@ -11,6 +11,7 @@ import type { DemoDataset } from "./types";
  */
 export const colors: DemoDataset = {
   id: "xkcd-colors",
+  sourceFile: "colors.tsx",
   title: "xkcd colors",
   description: "949 crowd-named colors (xkcd survey) × rgb and hsl components",
   load: () => import("../data/colors.json").then((m) => m.default as DataObj[]),

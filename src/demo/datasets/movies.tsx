@@ -20,6 +20,7 @@ import type { DemoDataset } from "./types";
  */
 export const movies: DemoDataset = {
   id: "movies",
+  sourceFile: "movies.tsx",
   title: "Movies",
   description: "3,201 films (vega-datasets) x profit, grosses, ratings, and genre strings",
   load: () => import("../data/movies.json").then((m) => m.default as DataObj[]),

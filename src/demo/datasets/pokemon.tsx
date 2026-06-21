@@ -12,6 +12,7 @@ const colors = typeColors as Record<string, string>;
  */
 export const pokemon: DemoDataset = {
   id: "pokemon",
+  sourceFile: "pokemon.tsx",
   title: "Pokémon",
   description: "898 Pokémon × 6 base stats, types, and generations",
   load: () => import("../data/mons.json").then((m) => m.default as DataObj[]),
