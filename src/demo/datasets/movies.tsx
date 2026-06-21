@@ -7,8 +7,16 @@ import type { DemoDataset } from "./types";
  * scripts/prepare-movies.mjs. String-heavy on purpose — tidy ordinals
  * (genre, MPAA rating, creative type, source) next to Distributor (174
  * distinct) and Director (550 distinct), which exceed MAX_ORDINAL and get
- * the first-char mapping. Profit ($M) is negative for ~1,100 flops, so the
- * selected axis shows the diverging ramp anchored at zero.
+ * the first-char mapping. Profit ($M) is negative for ~1,100 flops.
+ *
+ * Colorized with `colorize: "distinguish"`: with no colorizeLock the rows take
+ * a unique, stable per-row color from the selected axis (Profit) — its rank,
+ * z-score, and folded-median deviation mapped to HSV hue / saturation /
+ * brightness (saturation kept high so no row reads as washed-out).
+ *
+ * Also showcases the chart-level `stats` option: the selected axis' markers
+ * are recolored (custom red max / blue min) and trimmed (mean and ±1σ hidden)
+ * so the median and IQR read clearly without the extra statistical noise.
  */
 export const movies: DemoDataset = {
   id: "movies",
@@ -49,6 +57,17 @@ export const movies: DemoDataset = {
       ],
       hide: ["Title", "US Gross"],
       select: "Profit",
+      colorize: "distinguish",
+      stats: {
+        enabled: true,
+        colors: {
+          max: "#e0245e", // custom red
+          min: "#1d9bf0", // custom blue
+          mean: false, // hidden — keep median, drop mean
+          stddev: false, // hidden — drop the ±1σ lines
+          // median / iqr omitted -> default green / yellow
+        },
+      },
     }),
   renderRow: (row) => (
     <div>

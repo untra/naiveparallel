@@ -82,10 +82,9 @@ export function Home() {
   return (
     <main style={{ padding: "1rem" }}>
       <h1>🪒 naiveparallel</h1>
-      <p style={{ maxWidth: "72ch" }}>
-        A naive react parallel coordinates plot for <code>{"Array<T>"}</code> datasets. Pick a
-        preselected dataset+config pair below, or load your own — axes derive from the data
-        columns automatically.
+      <p style={{ maxWidth: "104ch" }}>
+        A naive react parallel coordinates plot for <code>{"Array<T>"}</code> datasets. Designed for interactivity, scalability, and visual comprehension.
+        Pick a preselected dataset+config pair below, or load your own — axes derive from the data columns automatically.
       </p>
 
       <div
@@ -142,7 +141,10 @@ export function Home() {
             {loaded.title} <small>({loaded.rows.length} rows)</small>
           </h2>
           <NaiveParallel key={loaded.key} data={loaded.rows} configuration={loaded.config}>
-            <ParallelChart />
+            <ParallelChart
+              hints={loaded.dataset?.hints}
+              margins={loaded.dataset?.hints ? { top: 60 } : undefined}
+            />
             <div style={{ display: "flex", gap: "2rem", alignItems: "flex-start", flexWrap: "wrap" }}>
               <ParallelColumn />
               <ParallelRow>
@@ -154,9 +156,7 @@ export function Home() {
                         (loaded.dataset?.renderRow?.(row) ?? (
                           <code style={{ fontSize: 11 }}>{JSON.stringify(row).slice(0, 200)}</code>
                         ))
-                      ) : (
-                        <em>hover a line; click to pin</em>
-                      )}
+                      ) : null}
                     </div>
                   );
                 }}

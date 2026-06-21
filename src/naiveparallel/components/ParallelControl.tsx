@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { isNumericAxis } from "../types";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
 import { discoverLeafPaths } from "../data/accessors";
 
@@ -73,7 +74,7 @@ export function ParallelControl(props: ParallelControlProps) {
                 {axis.label}
               </button>
               <span className="np-control-kind">
-                {axis.kind === "numerical" ? (axis.temporal ? "cal" : "#") : "abc"}
+                {axis.kind === "numerical" ? "#" : axis.kind === "temporal" ? "cal" : "abc"}
               </span>
               <button type="button" className="np-control-up" aria-label={`move ${axis.label} up`} onClick={() => move(axis.id, -1)}>
                 ↑
@@ -121,20 +122,25 @@ export function ParallelControl(props: ParallelControlProps) {
                 ? (config.colorizeAxisId ?? "")
                 : config.colorizeMode === "components"
                   ? "__components"
-                  : ""
+                  : config.colorizeMode === "distinguish"
+                    ? "__distinguish"
+                    : ""
             }
             onChange={(e) =>
               e.target.value === ""
                 ? setColorize(null, "follow")
                 : e.target.value === "__components"
                   ? setColorize(null, "components")
-                  : setColorize(e.target.value, "locked")
+                  : e.target.value === "__distinguish"
+                    ? setColorize(null, "distinguish")
+                    : setColorize(e.target.value, "locked")
             }
           >
             <option value="">follow selected axis</option>
-            {axes.filter((a) => a.kind === "numerical" && !a.hidden).length >= 3 && (
+            {axes.filter((a) => isNumericAxis(a) && !a.hidden).length >= 3 && (
               <option value="__components">color components (first 3 numerical → RGB)</option>
             )}
+            <option value="__distinguish">distinguish rows (unique per row)</option>
             {axes.map((axis) => (
               <option key={axis.id} value={axis.id}>
                 lock to {axis.label}

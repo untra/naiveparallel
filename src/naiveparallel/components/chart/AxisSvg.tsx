@@ -1,5 +1,6 @@
 import { useNaiveParallel } from "../../context/NaiveParallelContext";
-import type { NumericalAxis, OrdinalAxis, ParallelAxis } from "../../types";
+import type { NumericAxis, OrdinalAxis, ParallelAxis } from "../../types";
+import { isNumericAxis } from "../../types";
 import { useChartLayout } from "./ChartLayoutContext";
 import type { Orientation } from "./scales";
 import { useAxisDrag } from "./useAxisDrag";
@@ -64,7 +65,8 @@ export function AxisSvg({ axis }: AxisSvgProps) {
   const labelProps =
     orientation === "vertical"
       ? ({ x: valueLo - 8, dy: "0.32em", textAnchor: "end" } as const)
-      : ({ y: valueLo - 12, textAnchor: "middle" } as const);
+      : // raised to leave room for the hint subheader (filter counter) below it
+        ({ y: valueLo - 26, textAnchor: "middle" } as const);
 
   return (
     <g
@@ -73,7 +75,7 @@ export function AxisSvg({ axis }: AxisSvgProps) {
       transform={groupTransform}
     >
       <line className="np-axis-line" {...lineProps} stroke="currentColor" />
-      {axis.kind === "numerical" ? (
+      {isNumericAxis(axis) ? (
         <NumericalTrack axis={axis} />
       ) : (
         <OrdinalTrack axis={axis} />
@@ -92,7 +94,7 @@ export function AxisSvg({ axis }: AxisSvgProps) {
   );
 }
 
-function NumericalTrack({ axis }: { axis: NumericalAxis }) {
+function NumericalTrack({ axis }: { axis: NumericAxis }) {
   const { filters } = useNaiveParallel();
   const layout = useChartLayout();
   const orientation = layout.orientation;

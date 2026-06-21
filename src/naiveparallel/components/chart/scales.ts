@@ -1,5 +1,6 @@
 import { scaleLinear, scalePoint, scaleUtc } from "d3-scale";
 import type { ParallelAxis } from "../../types";
+import { isNumericAxis } from "../../types";
 
 /** Which way the chart is laid out. See ChartLayout for the geometry. */
 export type Orientation = "horizontal" | "vertical";
@@ -44,8 +45,8 @@ export function buildScale(
   // vertical puts high at the right (natural range)
   const valueRange: [number, number] =
     orientation === "vertical" ? [range[0], range[1]] : [range[1], range[0]];
-  if (axis.kind === "numerical") {
-    if (axis.temporal) {
+  if (isNumericAxis(axis)) {
+    if (axis.kind === "temporal") {
       // temporal: same epoch-ms positioning as linear, but a UTC time scale
       // gives date-boundary ticks and date-formatted labels. clamp(true) is
       // mandatory — time scales default to clamping disabled.

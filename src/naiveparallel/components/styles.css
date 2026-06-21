@@ -38,6 +38,7 @@
 }
 
 .np-axis-selected .np-axis-label {
+  font-weight: 800;
   text-decoration: underline;
 }
 
@@ -70,6 +71,80 @@
 .np-ordinal-disabled .np-axis-tick-label {
   opacity: 0.25;
   text-decoration: line-through;
+}
+
+/* ambient interaction hints (opt-in via the `hints` prop) */
+
+.np-hint-ghost-layer {
+  pointer-events: none;
+}
+
+.np-hint-ghost {
+  fill: var(--np-brush-color, #777);
+  opacity: 0.18;
+}
+
+/* while the ghost brush is on screen, dim the real lines so the in-range rows
+   redrawn by GhostHighlightCanvas read as the ones the brush keeps */
+.np-lines {
+  transition: opacity 140ms ease;
+}
+
+.np-hint-demo .np-lines {
+  opacity: 0.15;
+}
+
+.np-hint-counter {
+  pointer-events: none;
+  font-size: 11px;
+  text-align: center;
+  color: var(--np-axis-selected-color, #000);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.np-hint-counter-num {
+  /* font-weight is animated inline by the pulse motif */
+  font-variant-numeric: tabular-nums;
+}
+
+.np-hint-tooltip {
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: #222;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 15%);
+  z-index: 2;
+}
+
+.np-hint-tooltip-title {
+  font-weight: 700;
+  margin-bottom: 2px;
+  overflow-wrap: anywhere;
+}
+
+.np-hint-tooltip-rows {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0 0.5rem;
+}
+
+.np-hint-tooltip-rows > div {
+  display: contents;
+}
+
+.np-hint-tooltip-rows dt {
+  opacity: 0.6;
+}
+
+.np-hint-tooltip-rows dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* control */

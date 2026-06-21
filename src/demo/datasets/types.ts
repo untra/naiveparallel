@@ -13,6 +13,8 @@ export interface DemoDataset {
   load?: () => Promise<DataObj[]>;
   /** Builds the tasteful preset configuration from the loaded rows. */
   makeConfig?: (rows: DataObj[]) => NaiveParallelConfig;
+  /** Enables the opt-in ambient interaction hints for this dataset's chart. */
+  hints?: boolean;
   /** Renders the hovered/pinned row card for ParallelRow. */
   renderRow?: (row: DataObj) => ReactNode;
 }

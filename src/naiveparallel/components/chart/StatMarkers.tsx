@@ -1,5 +1,5 @@
+import { statColor, statShown } from "../../data/statMarkers";
 import { useNaiveParallel } from "../../context/NaiveParallelContext";
-import { STAT_COLORS } from "../../types";
 import { useChartLayout } from "./ChartLayoutContext";
 import type { Orientation } from "./scales";
 
@@ -35,19 +35,20 @@ function serifs(orientation: Orientation, p: number, toward: number, len = 6) {
  *
  * Numerical: red max (half thickness) / blue min (half thickness) /
  * green median / cyan mean / yellow IQR bracket / magenta dotted lines at
- * median±1σ. Ordinal: cyan mode dot, green median dash, and the dispersion
- * index as a badge near the axis.
+ * median±1σ. Ordinal: cyan mode dot and green median dash (the dispersion
+ * index is reported by ParallelColumn, not drawn on-chart, so it never
+ * overlaps the axis label).
  */
 export function StatMarkers() {
-  const { selectedAxis, selectedStats } = useNaiveParallel();
+  const { selectedAxis, selectedStats, config } = useNaiveParallel();
   const layout = useChartLayout();
+  const sm = config.statMarkers;
 
   if (!selectedAxis || !selectedStats) return null;
   if (!layout.visibleAxes.some((a) => a.id === selectedAxis.id)) return null;
 
   const orientation = layout.orientation;
   const axisPos = layout.axisPos(selectedAxis.id);
-  const [valueLo] = layout.valueExtent();
   const scale = layout.scaleOf(selectedAxis.id);
   const groupTransform =
     orientation === "vertical" ? `translate(0,${axisPos})` : `translate(${axisPos},0)`;
@@ -61,53 +62,59 @@ export function StatMarkers() {
     return (
       <g className="np-stats" data-testid="np-stats" transform={groupTransform}>
         {/* yellow IQR bracket */}
-        <g className="np-stat-iqr" stroke={STAT_COLORS.iqr} fill="none">
-          <line {...crossLine(orientation, y(q3))} />
-          <line {...crossLine(orientation, y(q1))} />
-          {[...serifs(orientation, y(q3), y(q1)), ...serifs(orientation, y(q1), y(q3))].map((s, i) => (
-            <line key={i} {...s} />
-          ))}
-        </g>
+        {statShown(sm, "iqr") && (
+          <g className="np-stat-iqr" stroke={statColor(sm, "iqr")} fill="none">
+            <line {...crossLine(orientation, y(q3))} />
+            <line {...crossLine(orientation, y(q1))} />
+            {[...serifs(orientation, y(q3), y(q1)), ...serifs(orientation, y(q1), y(q3))].map((s, i) => (
+              <line key={i} {...s} />
+            ))}
+          </g>
+        )}
         {/* magenta dotted ±1σ from the median */}
-        <g className="np-stat-stddev" stroke={STAT_COLORS.stddev} strokeDasharray="3 3">
-          <line {...crossLine(orientation, sigmaHi)} />
-          <line {...crossLine(orientation, sigmaLo)} />
-        </g>
-        <line className="np-stat-max" {...crossLine(orientation, y(max))} stroke={STAT_COLORS.max} strokeWidth={THICK / 2} />
-        <line className="np-stat-mean" {...crossLine(orientation, y(mean))} stroke={STAT_COLORS.mean} strokeWidth={THICK} />
-        <line className="np-stat-median" {...crossLine(orientation, y(median))} stroke={STAT_COLORS.median} strokeWidth={THICK} />
-        <line className="np-stat-min" {...crossLine(orientation, y(min))} stroke={STAT_COLORS.min} strokeWidth={THICK / 2} />
+        {statShown(sm, "stddev") && (
+          <g className="np-stat-stddev" stroke={statColor(sm, "stddev")} strokeDasharray="3 3">
+            <line {...crossLine(orientation, sigmaHi)} />
+            <line {...crossLine(orientation, sigmaLo)} />
+          </g>
+        )}
+        {statShown(sm, "max") && (
+          <line className="np-stat-max" {...crossLine(orientation, y(max))} stroke={statColor(sm, "max")} strokeWidth={THICK / 2} />
+        )}
+        {statShown(sm, "mean") && (
+          <line className="np-stat-mean" {...crossLine(orientation, y(mean))} stroke={statColor(sm, "mean")} strokeWidth={THICK} />
+        )}
+        {statShown(sm, "median") && (
+          <line className="np-stat-median" {...crossLine(orientation, y(median))} stroke={statColor(sm, "median")} strokeWidth={THICK} />
+        )}
+        {statShown(sm, "min") && (
+          <line className="np-stat-min" {...crossLine(orientation, y(min))} stroke={statColor(sm, "min")} strokeWidth={THICK / 2} />
+        )}
       </g>
     );
   }
 
-  const { mode, median, dispersion } = selectedStats;
+  const { mode, median } = selectedStats;
   const modeP = scale.y(mode);
   const medianP = median === null ? null : scale.y(median);
-  const dispersionProps =
-    orientation === "vertical"
-      ? ({ x: valueLo, y: -12, textAnchor: "start" } as const)
-      : ({ y: layout.margins.top - 26, textAnchor: "middle" } as const);
+  // dispersion is reported by ParallelColumn, not drawn here — an on-chart
+  // badge would sit on top of the selected axis label.
   return (
     <g className="np-stats" data-testid="np-stats" transform={groupTransform}>
-      {modeP !== null && (
+      {modeP !== null && statShown(sm, "mode") && (
         <circle
           className="np-stat-mode"
           cx={orientation === "vertical" ? modeP : 0}
           cy={orientation === "vertical" ? 0 : modeP}
           r={5}
           fill="none"
-          stroke={STAT_COLORS.mode}
+          stroke={statColor(sm, "mode")}
           strokeWidth={2}
         />
       )}
-      {medianP !== null && (
-        <line className="np-stat-median" {...crossLine(orientation, medianP)} stroke={STAT_COLORS.median} strokeWidth={2} />
+      {medianP !== null && statShown(sm, "median") && (
+        <line className="np-stat-median" {...crossLine(orientation, medianP)} stroke={statColor(sm, "median")} strokeWidth={2} />
       )}
-      {/* dispersion index as a labeled badge near the axis */}
-      <text className="np-stat-dispersion" {...dispersionProps} fontSize={10}>
-        {`H ${dispersion.toFixed(2)}`}
-      </text>
     </g>
   );
 }

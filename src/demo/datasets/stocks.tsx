@@ -13,8 +13,10 @@ import type { DemoDataset } from "./types";
 export const stocks: DemoDataset = {
   id: "otc-stocks",
   title: "OTC stocks 6/10/2026",
-  description: "3,000+ OTC tickers (Massive API) x one day of price, volume, and change",
+  description: "3,000+ OTC tickers (Massive API) x one day of price, volume, and OLHC change",
   load: () => import("../data/otcstocks.json").then((m) => m.default as DataObj[]),
+  // 3,000+ rows make the live filter counter's payoff especially vivid
+  hints: true,
   makeConfig: (rows) =>
     presetConfig(rows, {
       inferOptions: {
@@ -29,7 +31,7 @@ export const stocks: DemoDataset = {
           trades: { domain: [0, 2000] },
         },
       },
-      order: ["changePerc", "close", "open", "high", "low", "vwap", "volume", "trades", "ticker"],
+      order: ["ticker", "changePerc", "close", "open", "high", "low", "vwap", "volume", "trades"],
       select: "changePerc",
     }),
   renderRow: (row) => (

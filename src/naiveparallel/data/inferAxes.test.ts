@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import mons from "../../demo/data/mons.json";
-import type { NumericalAxis, OrdinalAxis } from "../types";
+import type { NumericalAxis, OrdinalAxis, TemporalAxis } from "../types";
 import { MAX_ORDINAL } from "../types";
 import { firstCharMapping, inferAxes, inferAxis, selectIdentityAxis } from "./inferAxes";
 
@@ -145,13 +145,13 @@ describe("inferAxis", () => {
 });
 
 describe("inferAxis (temporal)", () => {
-  it("infers a temporal numerical axis from a consistent ISO-date column", () => {
+  it("infers a temporal axis from a consistent ISO-date column", () => {
     const axis = inferAxis({
       path: "date",
       values: ["2024-01-15", "2024-03-01", "2023-12-31"],
       maxOrdinal: 64,
-    }) as NumericalAxis;
-    expect(axis.kind).toBe("numerical");
+    }) as TemporalAxis;
+    expect(axis.kind).toBe("temporal");
     expect(axis.temporal).toEqual({ pattern: "iso-date", source: "string" });
     expect(axis.domain).toEqual([Date.UTC(2023, 11, 31), Date.UTC(2024, 2, 1)]);
     expect(axis.allIntegers).toBe(true);
@@ -160,7 +160,6 @@ describe("inferAxis (temporal)", () => {
   it("does NOT auto-detect numeric year columns as temporal", () => {
     const axis = inferAxis({ path: "year", values: [1999, 2000, 2024], maxOrdinal: 64 }) as NumericalAxis;
     expect(axis.kind).toBe("numerical");
-    expect(axis.temporal).toBeUndefined();
   });
 
   it("falls back to ordinal when a string date column is inconsistent", () => {
@@ -175,8 +174,8 @@ describe("inferAxis (temporal)", () => {
       values: [ms, ms + 86_400_000],
       override: { kind: "temporal" },
       maxOrdinal: 64,
-    }) as NumericalAxis;
-    expect(axis.kind).toBe("numerical");
+    }) as TemporalAxis;
+    expect(axis.kind).toBe("temporal");
     expect(axis.temporal).toEqual({ pattern: "iso-datetime", source: "number" });
     expect(axis.domain).toEqual([ms, ms + 86_400_000]);
   });
@@ -198,7 +197,7 @@ describe("inferAxis (temporal)", () => {
       values: [-day, 0, day],
       override: { kind: "temporal" },
       maxOrdinal: 64,
-    }) as NumericalAxis;
+    }) as TemporalAxis;
     expect(axis.temporal).toEqual({ pattern: "iso-datetime", source: "number" });
     expect(axis.domain).toEqual([0, day]);
   });

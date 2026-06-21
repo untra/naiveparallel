@@ -1,5 +1,6 @@
 import { scalePoint } from "d3-scale";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { isNumericAxis } from "../types";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
 import { AxisSvg } from "./chart/AxisSvg";
 import {
@@ -13,13 +14,18 @@ import { LinesCanvas } from "./chart/LinesCanvas";
 import { buildScale, type AxisScale, type Orientation } from "./chart/scales";
 import { StatMarkers } from "./chart/StatMarkers";
 import { useRowHover } from "./chart/useRowHover";
+import { FilterCounter } from "./chart/hints/FilterCounter";
+import { GhostBrush } from "./chart/hints/GhostBrush";
+import { HoverTooltip } from "./chart/hints/HoverTooltip";
 
 /** The stacked render layers; a separate component so hooks can read the layout context. */
-function ChartLayers() {
+function ChartLayers({ hints }: { hints?: boolean }) {
   const layout = useChartLayout();
   const hover = useRowHover();
+  const layersRef = useRef<HTMLDivElement>(null);
   return (
     <div
+      ref={layersRef}
       className="np-chart-layers"
       style={{ position: "absolute", inset: 0 }}
       onPointerMove={hover.onPointerMove}
@@ -39,6 +45,13 @@ function ChartLayers() {
         ))}
         <StatMarkers />
       </svg>
+      {hints && (
+        <>
+          <GhostBrush containerRef={layersRef} />
+          <FilterCounter />
+          <HoverTooltip containerRef={layersRef} />
+        </>
+      )}
     </div>
   );
 }
@@ -62,6 +75,12 @@ export interface ParallelChartProps {
    */
   height?: number;
   margins?: Partial<ChartMargins>;
+  /**
+   * Opt-in ambient interaction hints (off by default): a ghost-brush demo, a
+   * live filter counter, and a hover readout tooltip. When false, nothing about
+   * the chart's behavior changes — no extra DOM, listeners, or timers.
+   */
+  hints?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -133,7 +152,7 @@ export function ParallelChart(props: ParallelChartProps) {
   const layout = useMemo<ChartLayout | null>(() => {
     if (width <= 0) return null;
     const visibleAxes = axes.filter(
-      (axis) => !axis.hidden && (axis.kind === "numerical" || axis.renderable)
+      (axis) => !axis.hidden && (isNumericAxis(axis) || axis.renderable)
     );
     const n = visibleAxes.length;
 
@@ -202,7 +221,7 @@ export function ParallelChart(props: ParallelChartProps) {
     >
       {layout && (
         <ChartLayoutContext.Provider value={layout}>
-          <ChartLayers />
+          <ChartLayers hints={props.hints} />
         </ChartLayoutContext.Provider>
       )}
     </div>

@@ -1,8 +1,10 @@
 import {
   deriveConfig,
+  type ColorizeMode,
   type DataObj,
   type InferAxesOptions,
   type NaiveParallelConfig,
+  type StatMarkersConfig,
 } from "../../naiveparallel";
 
 export interface PresetOptions {
@@ -15,8 +17,17 @@ export interface PresetOptions {
   select?: string;
   /** Lock row colorizing to this axis. */
   colorizeLock?: string;
-  /** Map the first three visible numerical axes onto RGB channels instead. */
-  colorize?: "components";
+  /**
+   * Row-colorizing strategy:
+   *  - "mapping" (default): the per-axis color ramp, following the selected
+   *    axis or locked to `colorizeLock`.
+   *  - "components": the first three visible numerical axes mapped onto RGB.
+   *  - "distinguish": a unique, stable per-row color from one column
+   *    (`colorizeLock`, else the selected axis) — a debugging colorizer.
+   */
+  colorize?: "mapping" | "components" | "distinguish";
+  /** Chart-level stat-marker visibility/colors for the selected axis. */
+  stats?: StatMarkersConfig;
 }
 
 const matches = (id: string, pattern: string) =>
@@ -28,7 +39,7 @@ const matches = (id: string, pattern: string) =>
  * a colorize lock. Pure post-processing of the library's own config model.
  */
 export function presetConfig(rows: DataObj[], options: PresetOptions = {}): NaiveParallelConfig {
-  const { inferOptions, order = [], hide = [], select, colorizeLock, colorize } = options;
+  const { inferOptions, order = [], hide = [], select, colorizeLock, colorize, stats } = options;
   const derived = deriveConfig(rows, inferOptions);
 
   const rank = new Map(order.map((id, i) => [id, i]));
@@ -38,10 +49,23 @@ export function presetConfig(rows: DataObj[], options: PresetOptions = {}): Naiv
     )
     .sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
 
+  // "mapping" (or omitted) keeps the per-axis ramp: locked when a colorizeLock
+  // is named, else follow. "components" ignores any lock; "distinguish" treats
+  // the lock as the column to distinguish (else the selected axis).
+  const colorizeMode: ColorizeMode =
+    colorize === "components"
+      ? "components"
+      : colorize === "distinguish"
+        ? "distinguish"
+        : colorizeLock
+          ? "locked"
+          : "follow";
+
   return {
     axes,
     selectedAxisId: select ?? derived.selectedAxisId,
-    colorizeAxisId: colorize ? null : (colorizeLock ?? null),
-    colorizeMode: colorize ?? (colorizeLock ? "locked" : "follow"),
+    colorizeAxisId: colorize === "components" ? null : (colorizeLock ?? null),
+    colorizeMode,
+    statMarkers: stats,
   };
 }

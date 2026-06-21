@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNaiveParallel } from "../../context/NaiveParallelContext";
 import type { AxisFilter, OrdinalAxis, ParallelAxis } from "../../types";
+import { isNumericAxis } from "../../types";
 import { useChartLayout } from "./ChartLayoutContext";
 
 export interface BrushState {
@@ -158,7 +159,7 @@ export function useBrush(axis: ParallelAxis): BrushState {
       lastFilter.current = null;
 
       const committed = filters[axis.id];
-      if (axis.kind === "numerical" && committed?.kind === "numeric") {
+      if (isNumericAxis(axis) && committed?.kind === "numeric") {
         // the value-pixels of min/max; which is smaller depends on orientation
         const pa = scale.y(committed.max);
         const pb = scale.y(committed.min);

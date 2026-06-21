@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import mons from "../../demo/data/mons.json";
-import type { NaiveParallelConfig, NumericalAxis, OrdinalAxis } from "../types";
+import type {
+  NaiveParallelConfig,
+  NumericalAxis,
+  OrdinalAxis,
+  TemporalAxis,
+  TemporalMarker,
+} from "../types";
 import {
   buildColorizer,
   buildComponentColorizer,
+  buildDistinguishColorizer,
   FALLBACK_COLOR,
   muteColor,
   resolveColorizeAxis,
@@ -22,6 +29,20 @@ function numAxis(id: string, domain: [number, number], extra: Partial<NumericalA
     allIntegers: true,
     allPositive: domain[0] >= 0,
     ...extra,
+  };
+}
+
+function tempAxis(id: string, domain: [number, number], temporal: TemporalMarker): TemporalAxis {
+  return {
+    id,
+    path: id,
+    label: id,
+    hidden: false,
+    kind: "temporal",
+    domain,
+    allIntegers: true,
+    allPositive: domain[0] >= 0,
+    temporal,
   };
 }
 
@@ -117,8 +138,9 @@ describe("buildColorizer (numerical, domain crossing zero)", () => {
 });
 
 describe("buildColorizer (temporal)", () => {
-  const dateAxis = numAxis("date", [Date.UTC(2024, 0, 1), Date.UTC(2024, 0, 31)], {
-    temporal: { pattern: "iso-date", source: "string" },
+  const dateAxis = tempAxis("date", [Date.UTC(2024, 0, 1), Date.UTC(2024, 0, 31)], {
+    pattern: "iso-date",
+    source: "string",
   });
 
   it("keeps the blue (early) to red (late) hue ramp", () => {
@@ -195,8 +217,9 @@ describe("buildComponentColorizer", () => {
   });
 
   it("parses temporal string channels to their epoch-ms placement", () => {
-    const date = numAxis("date", [Date.UTC(2024, 0, 1), Date.UTC(2024, 0, 31)], {
-      temporal: { pattern: "iso-date", source: "string" },
+    const date = tempAxis("date", [Date.UTC(2024, 0, 1), Date.UTC(2024, 0, 31)], {
+      pattern: "iso-date",
+      source: "string",
     });
     const colorize = buildComponentColorizer(componentsConfig([date, attack, speed]));
     expect(colorize({ date: "2024-01-31", attack: 0, speed: 0 })).toBe("rgb(255, 0, 0)");
@@ -222,6 +245,87 @@ describe("resolveColorizeAxis", () => {
   it("resolves to no single axis in components mode", () => {
     const config = { ...deriveConfig(mons as any[]), colorizeMode: "components" as const };
     expect(resolveColorizeAxis(config)).toBeNull();
+  });
+
+  it("distinguishes the locked axis when distinguish + lock", () => {
+    const config = {
+      ...deriveConfig(mons as any[]),
+      colorizeAxisId: "type1",
+      colorizeMode: "distinguish" as const,
+    };
+    expect(resolveColorizeAxis(config)?.id).toBe("type1");
+  });
+
+  it("distinguishes the selected axis when distinguish + no lock", () => {
+    const base = deriveConfig(mons as any[]);
+    const config = {
+      ...base,
+      colorizeAxisId: null,
+      selectedAxisId: base.axes[1].id, // not axes[0]
+      colorizeMode: "distinguish" as const,
+    };
+    expect(resolveColorizeAxis(config)?.id).toBe(base.axes[1].id);
+  });
+});
+
+describe("buildDistinguishColorizer", () => {
+  // HSV value = max channel; HSV saturation = (max - min) / max.
+  const valOf = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    return Math.max(n >> 16, (n >> 8) & 255, n & 255) / 255;
+  };
+  const satOf = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    const mx = Math.max(n >> 16, (n >> 8) & 255, n & 255);
+    const mn = Math.min(n >> 16, (n >> 8) & 255, n & 255);
+    return mx === 0 ? 0 : (mx - mn) / mx;
+  };
+
+  it("maps rank→hue, median-deviation→brightness, z-score→saturation", () => {
+    // hp values 0/50/100: stats min0 max100 mean50 median50 stddev50 iqr50
+    const rows = [{ hp: 0 }, { hp: 50 }, { hp: 100 }];
+    const colorize = buildDistinguishColorizer(hpAxis, rows);
+    const [c0, c1, c2] = rows.map(colorize);
+    // hue climbs with rank: min red(~0°), median(~150°), max magenta(~300°)
+    expect(hexToHue(c0)).toBeCloseTo(0, 0);
+    expect(hexToHue(c1)).toBeCloseTo(150, 0);
+    expect(hexToHue(c2)).toBeCloseTo(300, 0);
+    // median row is dimmer than the extremes on either side
+    expect(valOf(c1)).toBeLessThan(valOf(c0));
+    expect(valOf(c1)).toBeLessThan(valOf(c2));
+    // above-mean row is more saturated than the below-mean one
+    expect(satOf(c2)).toBeGreaterThan(satOf(c0));
+    // every row stays vivid (saturation never drops out of the high band)
+    for (const c of [c0, c1, c2]) expect(satOf(c)).toBeGreaterThanOrEqual(0.7 - 1e-9);
+  });
+
+  it("brightens a far outlier above the clustered bulk (eyeball-it signal)", () => {
+    const rows = [...Array(19)].map(() => ({ hp: 1 })).concat([{ hp: 1000 }]);
+    const colorize = buildDistinguishColorizer(hpAxis, rows);
+    const outlier = colorize(rows[19]);
+    expect(hexToHue(outlier)).toBeCloseTo(300, 0); // max value -> top rank -> magenta
+    // the bulk sits on the median (dim); the outlier is brighter
+    expect(valOf(outlier)).toBeGreaterThan(valOf(colorize(rows[0])));
+  });
+
+  it("ranks ordinal axes by their value index", () => {
+    const rows = [{ type1: "Fire" }, { type1: "Water" }, { type1: "Fire" }];
+    const colorize = buildDistinguishColorizer(typeAxis, rows);
+    // Water is the highest index -> top rank -> hue past both Fire rows
+    expect(hexToHue(colorize(rows[1]))).toBeGreaterThan(hexToHue(colorize(rows[0])));
+    expect(hexToHue(colorize(rows[1]))).toBeGreaterThan(hexToHue(colorize(rows[2])));
+  });
+
+  it("is stable for the same row across calls", () => {
+    const rows = [{ hp: 10 }, { hp: 20 }, { hp: 30 }];
+    const colorize = buildDistinguishColorizer(hpAxis, rows);
+    expect(colorize(rows[1])).toBe(colorize(rows[1]));
+  });
+
+  it("falls back for a null axis, empty data, or a row with no value", () => {
+    expect(buildDistinguishColorizer(null, [{ hp: 1 }])({})).toBe(FALLBACK_COLOR);
+    expect(buildDistinguishColorizer(hpAxis, [])({})).toBe(FALLBACK_COLOR);
+    expect(buildDistinguishColorizer(hpAxis, [{ hp: 1 }])({})).toBe(FALLBACK_COLOR);
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { NumericalAxis, OrdinalAxis } from "../types";
+import type { NumericalAxis, OrdinalAxis, TemporalAxis } from "../types";
 import {
   axisValue,
   collectValues,
@@ -111,12 +111,12 @@ describe("ordinalValueOf / axisValue", () => {
   });
 
   it("parses temporal string rows to epoch-ms", () => {
-    const temporalAxis: NumericalAxis = {
+    const temporalAxis: TemporalAxis = {
       id: "released",
       path: "released",
       label: "released",
       hidden: false,
-      kind: "numerical",
+      kind: "temporal",
       domain: [Date.UTC(2024, 0, 1), Date.UTC(2024, 11, 31)],
       allIntegers: true,
       allPositive: true,
@@ -130,12 +130,12 @@ describe("ordinalValueOf / axisValue", () => {
 
   it("passes numbers through a number-sourced temporal axis", () => {
     const ms = Date.UTC(2024, 0, 1);
-    const temporalAxis: NumericalAxis = {
+    const temporalAxis: TemporalAxis = {
       id: "t",
       path: "t",
       label: "t",
       hidden: false,
-      kind: "numerical",
+      kind: "temporal",
       domain: [ms, ms + 1000],
       allIntegers: true,
       allPositive: true,

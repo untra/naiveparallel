@@ -7,6 +7,7 @@ import type {
   OrdinalAxis,
   ParallelAxis,
   Path,
+  TemporalAxis,
   TemporalMarker,
 } from "../types";
 import { MAX_ORDINAL } from "../types";
@@ -92,7 +93,7 @@ export function inferAxis(input: InferAxisInput): ParallelAxis | null {
   }
 
   const kind: AxisKind = temporal
-    ? "numerical"
+    ? "temporal"
     : override?.kind === "temporal"
       ? allNumbers
         ? "numerical"
@@ -106,7 +107,7 @@ export function inferAxis(input: InferAxisInput): ParallelAxis | null {
     hidden: override?.hidden ?? false,
   };
 
-  if (kind === "numerical") {
+  if (kind === "numerical" || kind === "temporal") {
     let numbers: number[];
     if (temporal?.source === "string") {
       numbers = (values as string[])
@@ -126,14 +127,17 @@ export function inferAxis(input: InferAxisInput): ParallelAxis | null {
       if (n > max) max = n;
       if (allIntegers && !Number.isInteger(n)) allIntegers = false;
     }
-    const axis: NumericalAxis = {
+    const shared = {
       ...base,
-      kind: "numerical",
-      domain: override?.domain ?? [min, max],
+      domain: override?.domain ?? ([min, max] as [number, number]),
       allIntegers,
       allPositive: min >= 0,
-      ...(temporal ? { temporal } : {}),
     };
+    if (temporal) {
+      const axis: TemporalAxis = { ...shared, kind: "temporal", temporal };
+      return axis;
+    }
+    const axis: NumericalAxis = { ...shared, kind: "numerical" };
     return axis;
   }
 
@@ -187,7 +191,7 @@ export function selectIdentityAxis(
 ): ParallelAxis | null {
   // Temporal axes are excluded: epoch-ms values are unique integers but a
   // timestamp column is not a row id.
-  const numericals = axes.filter((a): a is NumericalAxis => a.kind === "numerical" && !a.temporal);
+  const numericals = axes.filter((a): a is NumericalAxis => a.kind === "numerical");
   if (numericals.length === 0) return null;
 
   const named = numericals.find((a) => /^(id|index|key|#)$/i.test(a.label) || /(^|\.)(id|index|key)$/i.test(a.path));

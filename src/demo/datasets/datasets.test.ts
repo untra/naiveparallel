@@ -6,6 +6,7 @@ import { cars } from "./cars";
 import { colors } from "./colors";
 import { movies } from "./movies";
 import { pokemon } from "./pokemon";
+import { presetConfig } from "./presetConfig";
 import { stocks } from "./stocks";
 
 const axis = (config: { axes: any[] }, id: string) => config.axes.find((a) => a.id === id);
@@ -139,7 +140,9 @@ describe("movies preset", () => {
     expect(profit.domain[0]).toBeLessThan(0);
     expect(profit.domain[1]).toBeGreaterThan(0);
     expect(config.selectedAxisId).toBe("Profit");
-    expect(config.colorizeMode).toBe("follow");
+    // distinguish colorize, no lock → drives off the selected axis (Profit)
+    expect(config.colorizeMode).toBe("distinguish");
+    expect(config.colorizeAxisId).toBeNull();
 
     // prepare script fixed the two-digit-year bug; years are plain numbers
     const year = axis(config, "Year") as NumericalAxis;
@@ -179,5 +182,43 @@ describe("otc stocks preset", () => {
     const ticker = axis(config, "ticker") as OrdinalAxis;
     expect(ticker.mapping).toBeDefined();
     expect(ticker.renderable).toBe(true);
+  });
+});
+
+describe("presetConfig colorize", () => {
+  const rows = [
+    { id: 1, a: 10, g: "x" },
+    { id: 2, a: 20, g: "y" },
+    { id: 3, a: 30, g: "x" },
+  ];
+
+  it("defaults to follow (the unnamed 'mapping')", () => {
+    const config = presetConfig(rows);
+    expect(config.colorizeMode).toBe("follow");
+    expect(config.colorizeAxisId).toBeNull();
+  });
+
+  it("maps 'mapping' + colorizeLock to a locked axis", () => {
+    const config = presetConfig(rows, { colorize: "mapping", colorizeLock: "g" });
+    expect(config.colorizeMode).toBe("locked");
+    expect(config.colorizeAxisId).toBe("g");
+  });
+
+  it("keeps 'components' as RGB with no single axis", () => {
+    const config = presetConfig(rows, { colorize: "components", colorizeLock: "g" });
+    expect(config.colorizeMode).toBe("components");
+    expect(config.colorizeAxisId).toBeNull();
+  });
+
+  it("maps 'distinguish' alone to distinguish mode with no lock (→ selected axis)", () => {
+    const config = presetConfig(rows, { colorize: "distinguish" });
+    expect(config.colorizeMode).toBe("distinguish");
+    expect(config.colorizeAxisId).toBeNull();
+  });
+
+  it("maps 'distinguish' + colorizeLock to distinguish that column", () => {
+    const config = presetConfig(rows, { colorize: "distinguish", colorizeLock: "a" });
+    expect(config.colorizeMode).toBe("distinguish");
+    expect(config.colorizeAxisId).toBe("a");
   });
 });

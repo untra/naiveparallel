@@ -1,5 +1,6 @@
 import { deviation, max, mean, median, min, quantile } from "d3-array";
 import type { DataObj, NumericalStats, OrdinalAxis, OrdinalStats, ParallelAxis } from "../types";
+import { isNumericAxis } from "../types";
 import { axisValue } from "./accessors";
 
 /**
@@ -66,7 +67,7 @@ export function ordinalStats(values: string[], ordering: string[]): OrdinalStats
 
 /** Computes the stats for an axis over a set of (already filtered) rows. */
 export function columnStats(axis: ParallelAxis, rows: ReadonlyArray<DataObj>) {
-  if (axis.kind === "numerical") {
+  if (isNumericAxis(axis)) {
     const values: number[] = [];
     for (const row of rows) {
       const v = axisValue(axis, row);

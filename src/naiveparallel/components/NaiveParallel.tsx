@@ -22,6 +22,12 @@ export interface NaiveParallelProps<T extends DataObj = DataObj> {
   /** Pixel spacing between adjacent axes, forwarded to the default ParallelChart. */
   axisSpacing?: number;
   /**
+   * Opt-in ambient interaction hints (off by default), forwarded to the default
+   * ParallelChart (no effect when you supply your own children — pass `hints` to
+   * your own <ParallelChart> instead).
+   */
+  hints?: boolean;
+  /**
    * Compound children (ParallelControl, ParallelChart, ParallelColumn,
    * ParallelRow, or anything using useNaiveParallel). With no children the
    * full default UI renders from the data alone.
@@ -40,7 +46,7 @@ export interface NaiveParallelProps<T extends DataObj = DataObj> {
  *   <NaiveParallel data={data}> <ParallelChart/> ... </NaiveParallel>
  */
 export function NaiveParallel<T extends DataObj = DataObj>(props: NaiveParallelProps<T>) {
-  const { data, configuration, inferOptions, layout, axisSpacing, children, className, style } =
+  const { data, configuration, inferOptions, layout, axisSpacing, hints, children, className, style } =
     props;
 
   const rows = useMemo(() => data.filter((row): row is T => row != null), [data]);
@@ -55,7 +61,7 @@ export function NaiveParallel<T extends DataObj = DataObj>(props: NaiveParallelP
       <NaiveParallelProvider data={rows} config={config}>
         {children ?? (
           <div className="np-default-ui">
-            <ParallelChart layout={layout} axisSpacing={axisSpacing} />
+            <ParallelChart layout={layout} axisSpacing={axisSpacing} hints={hints} />
             <ParallelControl />
           </div>
         )}

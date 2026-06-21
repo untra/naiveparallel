@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { useNaiveParallel } from "../context/NaiveParallelContext";
+import { deriveConfig } from "../data/deriveConfig";
 import type { NumericFilter, OrdinalFilter } from "../types";
 import type { Orientation } from "./chart/scales";
 import { NaiveParallel } from "./NaiveParallel";
@@ -499,7 +500,44 @@ describe("StatMarkers", () => {
     const stats = screen.getByTestId("np-stats");
     expect(stats.querySelector(".np-stat-mode")).toHaveAttribute("stroke", "cyan");
     expect(stats.querySelector(".np-stat-median")).toHaveAttribute("stroke", "green");
-    expect(stats.querySelector(".np-stat-dispersion")?.textContent).toMatch(/^H /);
+    // dispersion is reported by ParallelColumn, not drawn on-chart (it would
+    // overlap the axis label)
+    expect(stats.querySelector(".np-stat-dispersion")).toBeNull();
+  });
+
+  it("recolors and hides individual stats from the chart-level statMarkers config", () => {
+    const config = {
+      ...deriveConfig(data),
+      selectedAxisId: "hp",
+      statMarkers: {
+        enabled: true,
+        colors: { max: "#e0245e", min: "#1d9bf0", mean: false as const, stddev: false as const },
+      },
+    };
+    render(<NaiveParallel data={data} configuration={config} />);
+    const stats = screen.getByTestId("np-stats");
+    // recolored max/min
+    expect(stats.querySelector(".np-stat-max")).toHaveAttribute("stroke", "#e0245e");
+    expect(stats.querySelector(".np-stat-min")).toHaveAttribute("stroke", "#1d9bf0");
+    // hidden mean and ±1σ
+    expect(stats.querySelector(".np-stat-mean")).toBeNull();
+    expect(stats.querySelector(".np-stat-stddev")).toBeNull();
+    // omitted keys keep their defaults
+    expect(stats.querySelector(".np-stat-median")).toHaveAttribute("stroke", "green");
+    expect(stats.querySelector(".np-stat-iqr")).toHaveAttribute("stroke", "yellow");
+  });
+
+  it("hides every marker when statMarkers.enabled is false", () => {
+    const config = {
+      ...deriveConfig(data),
+      selectedAxisId: "hp",
+      statMarkers: { enabled: false },
+    };
+    render(<NaiveParallel data={data} configuration={config} />);
+    const stats = screen.getByTestId("np-stats");
+    // the group remains but holds no stat glyphs
+    expect(stats.querySelector("line")).toBeNull();
+    expect(stats.querySelector(".np-stat-iqr")).toBeNull();
   });
 });
 

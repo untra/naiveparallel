@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { NumericalAxis, OrdinalAxis } from "../../types";
+import type { NumericalAxis, OrdinalAxis, TemporalAxis } from "../../types";
 import { buildScale } from "./scales";
 
 const numAxis: NumericalAxis = {
@@ -99,12 +99,12 @@ describe("buildScale (temporal, vertical)", () => {
   });
 });
 
-const temporalAxis: NumericalAxis = {
+const temporalAxis: TemporalAxis = {
   id: "date",
   path: "date",
   label: "date",
   hidden: false,
-  kind: "numerical",
+  kind: "temporal",
   domain: [Date.UTC(2024, 0, 1), Date.UTC(2024, 0, 31)],
   allIntegers: true,
   allPositive: true,

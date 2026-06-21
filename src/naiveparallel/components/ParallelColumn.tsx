@@ -42,7 +42,7 @@ export function ParallelColumn(props: ParallelColumnProps) {
   }
 
   // temporal axes report their stats as dates, and spreads as durations
-  const temporal = selectedAxis.kind === "numerical" ? selectedAxis.temporal : undefined;
+  const temporal = selectedAxis.kind === "temporal" ? selectedAxis.temporal : undefined;
   const fmtValue = temporal
     ? (n: number) => formatTemporal(n, temporal.pattern === "iso-datetime")
     : format;
