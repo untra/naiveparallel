@@ -1,0 +1,127 @@
+body {
+  margin: 0;
+  font-family: "PT Sans", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #454545;
+  background-color: #fff;
+}
+
+a {
+  color: #009fd4;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #00b2ee;
+}
+
+/* Site header */
+
+.site-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  min-height: 55px;
+  padding: 0 1rem;
+  background-color: #f5f5f5;
+}
+
+.site-brand {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #454545;
+}
+
+.site-brand:hover {
+  color: #454545;
+  opacity: 0.8;
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-left: auto;
+}
+
+.page-link {
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-size: 0.85em;
+}
+
+.page-link:hover {
+  opacity: 0.8;
+}
+
+.wrapper {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.page-content {
+  padding: 1rem 1rem 2rem;
+}
+
+.dataset-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.dataset-tile {
+  display: block;
+  flex: 1 1 130px;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.dataset-tile:hover:enabled {
+  border-color: #009fd4;
+}
+
+.dataset-tile--active {
+  border-width: 2px;
+  border-color: #333;
+}
+
+.dataset-tile--disabled {
+  background: #f4f4f4;
+  color: #999;
+  cursor: default;
+}
+
+.dataset-tile--upload {
+  border-style: dashed;
+}
+
+/* Code sample */
+
+.code-sample {
+  max-width: 104ch;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+.footer {
+  padding-top: 1rem;
+  padding-bottom: 3em;
+  font-size: 12px;
+  color: #959595;
+}

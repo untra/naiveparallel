@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   NaiveParallel,
   ParallelChart,
@@ -24,20 +24,12 @@ interface LoadedDataset {
 const GITHUB_DATASETS_BASE =
   "https://github.com/untra/naiveparallel/blob/main/src/demo/datasets/";
 
-const tileStyle = (active: boolean, disabled: boolean): React.CSSProperties => ({
-  display: "block",
-  flex: "1 1 130px",
-  padding: "0.5rem 0.75rem",
-  textAlign: "left",
-  borderWidth: active ? 2 : 1,
-  borderStyle: "solid",
-  borderColor: active ? "#333" : "#bbb",
-  borderRadius: 6,
-  background: disabled ? "#f4f4f4" : "white",
-  color: disabled ? "#999" : "inherit",
-  cursor: disabled ? "default" : "pointer",
-  font: "inherit",
-});
+const USAGE_SNIPPET = `npm install @untra/naiveparallel
+
+import { NaiveParallel } from "@untra/naiveparallel";
+import "@untra/naiveparallel/styles.css";
+
+<NaiveParallel data={data} />`;
 
 export function Home() {
   const [loaded, setLoaded] = useState<LoadedDataset | null>(null);
@@ -83,25 +75,31 @@ export function Home() {
   }, []);
 
   return (
-    <main style={{ padding: "1rem" }}>
+    <main className="site-main">
       <h1>🪒 naiveparallel</h1>
-      <p style={{ maxWidth: "104ch" }}>
+      <p className="intro">
         A naive react parallel coordinates plot for <code>{"Array<T>"}</code> datasets. Designed for interactivity, scalability, and visual comprehension.
         Pick a preselected dataset+config pair below, or load your own — axes derive from the data columns automatically.
       </p>
+      <p className="intro">
+        naiveparallel is the charting sibling of{" "}
+        <a href="https://naivetable.untra.io" target="_blank" rel="noreferrer">
+          🍱 naivetable
+        </a>{" "}
+        — the same <code>{"Array<T>"}</code> in, a parallel coordinates plot out instead of a table.
+      </p>
+      <pre className="code-sample">
+        <code>{USAGE_SNIPPET}</code>
+      </pre>
 
-      <div
-        role="group"
-        aria-label="datasets"
-        style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", margin: "1rem 0" }}
-      >
+      <div role="group" aria-label="datasets" className="dataset-tiles">
         {DEMO_DATASETS.map((dataset) => (
           <button
             key={dataset.id}
             type="button"
             disabled={dataset.disabled}
             aria-pressed={loaded?.key === dataset.id}
-            style={tileStyle(loaded?.key === dataset.id, !!dataset.disabled)}
+            className="dataset-tile"
             onClick={() => void pick(dataset)}
           >
             <strong>{loading === dataset.id ? "loading…" : dataset.title}</strong>
@@ -111,7 +109,8 @@ export function Home() {
         ))}
         <button
           type="button"
-          style={{ ...tileStyle(loaded?.key.startsWith("custom:") ?? false, false), borderStyle: "dashed" }}
+          aria-pressed={loaded?.key.startsWith("custom:") ?? false}
+          className="dataset-tile dataset-tile-upload"
           onClick={() => fileRef.current?.click()}
         >
           <strong>load your own…</strong>
